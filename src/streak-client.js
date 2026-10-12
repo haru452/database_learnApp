@@ -141,6 +141,38 @@ export function createStreakApi(supabase) {
         createdAt: r.created_at,
       }));
     },
+
+    // ---------------- 要約練習 (Versant 対策) の採点結果 ----------------
+
+    /**
+     * 採点結果 (新しい順)。点数の推移を見るため、古いものも残っている (新しい 1000 件まで)。
+     * @returns {Array<{ id: number, date: string, createdAt: string, videoId: string, videoTitle: string,
+     *                   timeLimit: number, score: number, transcript: string, referenceSummary: string,
+     *                   goodPoints: string, missedPoints: string, languageFeedback: string,
+     *                   improvedSummary: string }>}
+     */
+    async getSummaryResults(limit = 200) {
+      const { data, error } = await supabase.rpc("get_my_summary_results", {
+        p_timezone: timeZone(),
+        p_limit: limit,
+      });
+      if (error) throw error;
+      return (data || []).map((r) => ({
+        id: r.id,
+        date: r.entry_date,
+        createdAt: r.created_at,
+        videoId: r.video_id || "",
+        videoTitle: r.video_title || "",
+        timeLimit: r.time_limit_seconds,
+        score: r.score,
+        transcript: r.transcript || "",
+        referenceSummary: r.reference_summary || "",
+        goodPoints: r.good_points || "",
+        missedPoints: r.missed_points || "",
+        languageFeedback: r.language_feedback || "",
+        improvedSummary: r.improved_summary || "",
+      }));
+    },
   };
 }
 
@@ -166,6 +198,7 @@ export function friendlyError(error) {
   if (/email not confirmed/i.test(message)) return byCode.email_not_confirmed;
   if (/already registered/i.test(message)) return byCode.user_already_exists;
   if (/at least \d+ characters/i.test(message)) return "パスワードが短すぎます。";
+  if (/get_my_summary_results/i.test(message)) return "要約練習の機能が、データベースにまだ追加されていません (supabase/summary.sql を実行してください)。";
   if (/not authenticated/i.test(message)) return "ログインの有効期限が切れました。もう一度ログインしてください。";
   if (/failed to fetch|networkerror|load failed/i.test(message)) return "通信に失敗しました。ネットワークを確認してください。";
 

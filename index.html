@@ -62,6 +62,34 @@
     .entry p { margin: 0; white-space: pre-wrap; word-break: break-word; line-height: 1.55; }
     .entry p.exp { font-size: .85rem; color: var(--muted); margin-top: 8px; }
     .empty { font-size: .9rem; color: var(--muted); }
+    /* ---- 要約練習のスコア ---- */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 4px 0 14px; }
+    .stat { border: 1px solid var(--line); border-radius: 12px; padding: 10px 8px; text-align: center; }
+    .stat .lbl { font-size: .7rem; color: var(--muted); }
+    .stat .val { font-size: 1.35rem; font-weight: 700; margin-top: 2px; }
+    @media (max-width: 400px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+    .chart { position: relative; margin: 0 0 6px; }
+    .chart svg { display: block; width: 100%; height: 200px; touch-action: pan-y; }
+    .chart .grid { stroke: var(--line); stroke-width: 1; }
+    .chart .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .chart .area { fill: var(--accent); fill-opacity: .1; }
+    .chart .line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+    .chart .dot { fill: var(--accent); stroke: var(--card); stroke-width: 2; }
+    .chart .end-label { fill: var(--text); font-size: 12px; font-weight: 700; }
+    .chart .cross { stroke: var(--muted); stroke-width: 1; }
+    .tip {
+      position: absolute; top: 0; pointer-events: none; max-width: 220px; padding: 8px 10px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .12); font-size: .8rem; line-height: 1.4;
+    }
+    .tip .score { font-size: 1rem; font-weight: 700; }
+    .tip .sub { color: var(--muted); }
+    .result .head { display: flex; gap: 10px; align-items: baseline; }
+    .result .score { flex: none; font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .result .score small { font-size: .7rem; font-weight: 400; color: var(--muted); }
+    .result a { color: var(--text); word-break: break-word; }
+    .result details { margin-top: 8px; }
+    .result summary { cursor: pointer; font-size: .8rem; color: var(--muted); }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -106,6 +134,18 @@
       <p class="hint">アプリで添削した日記の、直近7日分です。</p>
       <div id="diary-list"></div>
       <p id="diary-msg" class="msg" role="status"></p>
+
+      <h2>要約練習のスコア</h2>
+      <p class="hint">アプリの「Summary」で、動画を要約したときの点数です（100点満点）。</p>
+      <div id="sum-stats" class="stats" hidden></div>
+      <figure id="sum-chart" class="chart" hidden>
+        <svg id="sum-svg" role="img" aria-labelledby="sum-chart-desc"></svg>
+        <div id="sum-tip" class="tip" hidden></div>
+        <figcaption id="sum-chart-desc" class="hint"></figcaption>
+      </figure>
+      <div id="sum-list"></div>
+      <button id="sum-more" class="link" type="button" hidden>もっと見る</button>
+      <p id="sum-msg" class="msg" role="status"></p>
 
       <button id="logout" class="link" type="button">ログアウト</button>
     </section>
@@ -194,6 +234,7 @@
         say($("app-msg"), friendlyError(err), "error");
       }
       loadDiary();
+      loadSummary();
     }
 
     // ---------- 日記の履歴 (文章は textContent で入れる。HTML として解釈させない) ----------
@@ -260,6 +301,228 @@
         say($("app-msg"), friendlyError(err), "error");
         $("complete").disabled = false;
       }
+    });
+
+    // ---------- 要約練習のスコア (点数の推移) ----------
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const LIST_PAGE = 10;
+    let sumResults = [];   // 古い順
+    let sumShown = LIST_PAGE;
+
+    function svgEl(tag, attrs) {
+      const node = document.createElementNS(SVG_NS, tag);
+      for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+      return node;
+    }
+
+    function formatDateTime(iso) {
+      const d = new Date(iso);
+      return isNaN(d) ? "" : d.toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    }
+
+    function formatShortDate(iso) {
+      const d = new Date(iso);
+      return isNaN(d) ? "" : d.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" });
+    }
+
+    function renderSummaryStats(results) {
+      const box = $("sum-stats");
+      box.replaceChildren();
+      const scores = results.map((r) => r.score);
+      const recent = scores.slice(-5);
+      const items = [
+        ["回数", `${scores.length}回`],
+        ["最新", String(scores[scores.length - 1])],
+        ["直近5回の平均", (recent.reduce((a, b) => a + b, 0) / recent.length).toFixed(0)],
+        ["最高", String(Math.max(...scores))],
+      ];
+      for (const [label, value] of items) {
+        const tile = el("div", "stat");
+        tile.append(el("div", "lbl", label), el("div", "val", value));
+        box.append(tile);
+      }
+      box.hidden = false;
+    }
+
+    // 1回ごとの点数を、古い順に左から並べた折れ線グラフ
+    function renderSummaryChart(results) {
+      const svg = $("sum-svg");
+      const tip = $("sum-tip");
+      svg.replaceChildren();
+      tip.hidden = true;
+      $("sum-chart").hidden = false;
+
+      const W = svg.clientWidth || 470;
+      const H = 200;
+      const m = { left: 30, right: 34, top: 12, bottom: 24 };
+      const iw = W - m.left - m.right;
+      const ih = H - m.top - m.bottom;
+      const n = results.length;
+      const x = (i) => m.left + (n === 1 ? iw / 2 : (iw * i) / (n - 1));
+      const y = (score) => m.top + ih * (1 - score / 100);
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+      // 目盛り (0 / 25 / 50 / 75 / 100)
+      for (const v of [0, 25, 50, 75, 100]) {
+        svg.append(svgEl("line", { class: "grid", x1: m.left, x2: W - m.right, y1: y(v), y2: y(v) }));
+        const t = svgEl("text", { class: "tick", x: m.left - 6, y: y(v) + 4, "text-anchor": "end" });
+        t.textContent = String(v);
+        svg.append(t);
+      }
+
+      // 横軸: 最初と最後の日付
+      const first = svgEl("text", { class: "tick", x: x(0), y: H - 6, "text-anchor": n === 1 ? "middle" : "start" });
+      first.textContent = formatShortDate(results[0].createdAt);
+      svg.append(first);
+      if (n > 1) {
+        const last = svgEl("text", { class: "tick", x: x(n - 1), y: H - 6, "text-anchor": "end" });
+        last.textContent = formatShortDate(results[n - 1].createdAt);
+        svg.append(last);
+      }
+
+      const pts = results.map((r, i) => [x(i), y(r.score)]);
+      if (n > 1) {
+        const line = pts.map(([px, py], i) => `${i ? "L" : "M"}${px},${py}`).join(" ");
+        svg.append(svgEl("path", { class: "area", d: `${line} L${x(n - 1)},${y(0)} L${x(0)},${y(0)} Z` }));
+        svg.append(svgEl("path", { class: "line", d: line }));
+      }
+
+      // 点は、多すぎなければ全部、多ければ最後だけ
+      const dotAll = n <= 40;
+      pts.forEach(([px, py], i) => {
+        if (dotAll || i === n - 1) svg.append(svgEl("circle", { class: "dot", cx: px, cy: py, r: 4 }));
+      });
+
+      // 最新の点数だけ、線の端に表示する
+      const endLabel = svgEl("text", { class: "end-label", x: pts[n - 1][0] + 8, y: pts[n - 1][1] + 4 });
+      endLabel.textContent = String(results[n - 1].score);
+      svg.append(endLabel);
+
+      // ホバー / タップ: いちばん近い回の点数を出す
+      const cross = svgEl("line", { class: "cross", y1: m.top, y2: H - m.bottom, visibility: "hidden" });
+      const focus = svgEl("circle", { class: "dot", r: 6, visibility: "hidden" });
+      svg.append(cross, focus);
+
+      function showAt(clientX) {
+        const box = svg.getBoundingClientRect();
+        const px = ((clientX - box.left) / box.width) * W;
+        const i = n === 1 ? 0 : Math.max(0, Math.min(n - 1, Math.round(((px - m.left) / iw) * (n - 1))));
+        const r = results[i];
+        const [cx, cy] = pts[i];
+        cross.setAttribute("x1", cx);
+        cross.setAttribute("x2", cx);
+        focus.setAttribute("cx", cx);
+        focus.setAttribute("cy", cy);
+        cross.setAttribute("visibility", "visible");
+        focus.setAttribute("visibility", "visible");
+
+        tip.replaceChildren(
+          el("div", "score", `${r.score}点`),
+          el("div", "sub", `${formatDateTime(r.createdAt)}  ·  ${i + 1}回目`),
+          el("div", "", r.videoTitle || "(タイトルなし)"));
+        tip.hidden = false;
+        const scale = box.width / W;
+        const left = cx * scale + 12 + tip.offsetWidth > box.width ? cx * scale - 12 - tip.offsetWidth : cx * scale + 12;
+        tip.style.left = `${Math.max(0, left)}px`;
+      }
+
+      function hide() {
+        cross.setAttribute("visibility", "hidden");
+        focus.setAttribute("visibility", "hidden");
+        tip.hidden = true;
+      }
+
+      svg.onpointermove = (e) => showAt(e.clientX);
+      svg.onpointerdown = (e) => showAt(e.clientX);
+      svg.onpointerleave = hide;
+
+      const lastScore = results[n - 1].score;
+      $("sum-chart-desc").textContent =
+        `${n}回分の点数の推移（古い順）。最新は${lastScore}点、最高は${Math.max(...results.map((r) => r.score))}点。`;
+    }
+
+    function youtubeUrl(videoId) {
+      return /^[\w-]{6,20}$/.test(videoId) ? `https://www.youtube.com/watch?v=${videoId}` : "";
+    }
+
+    function renderSummaryList() {
+      const list = $("sum-list");
+      list.replaceChildren();
+      const newestFirst = sumResults.slice().reverse();
+      for (const r of newestFirst.slice(0, sumShown)) {
+        const card = el("div", "entry result");
+        card.append(el("div", "meta", `${formatDateTime(r.createdAt)}  ·  ${r.timeLimit}秒`));
+
+        const head = el("div", "head");
+        const score = el("div", "score", String(r.score));
+        score.append(el("small", "", " / 100"));
+        head.append(score);
+        const url = youtubeUrl(r.videoId);
+        if (url) {
+          const a = el("a", "", r.videoTitle || url);
+          a.href = url;
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          head.append(a);
+        } else {
+          head.append(el("span", "", r.videoTitle));
+        }
+        card.append(head);
+
+        const details = el("details");
+        details.append(el("summary", "", "詳しく見る"));
+        for (const [label, text, fix] of [
+          ["あなたの要約", r.transcript],
+          ["押さえた点", r.goodPoints],
+          ["抜けた点", r.missedPoints],
+          ["文法・言い回し", r.languageFeedback],
+          ["お手本の要約", r.referenceSummary, true],
+          ["あなたの要約の改善例", r.improvedSummary, true],
+        ]) {
+          if (!text) continue;
+          details.append(el("div", fix ? "lbl fix" : "lbl", label), el("p", "", text));
+        }
+        card.append(details);
+        list.append(card);
+      }
+      $("sum-more").hidden = sumShown >= sumResults.length;
+    }
+
+    function renderSummary() {
+      if (sumResults.length === 0) {
+        $("sum-stats").hidden = true;
+        $("sum-chart").hidden = true;
+        $("sum-more").hidden = true;
+        $("sum-list").replaceChildren(
+          el("p", "empty", "まだ結果がありません。アプリの「Summary」で動画を要約すると、ここに点数の推移が表示されます。"));
+        return;
+      }
+      renderSummaryStats(sumResults);
+      renderSummaryChart(sumResults);
+      renderSummaryList();
+    }
+
+    async function loadSummary() {
+      say($("sum-msg"), "");
+      try {
+        sumResults = (await api.getSummaryResults()).reverse();   // 古い順にする
+        sumShown = LIST_PAGE;
+        renderSummary();
+      } catch (err) {
+        say($("sum-msg"), friendlyError(err), "error");
+      }
+    }
+
+    $("sum-more").addEventListener("click", () => {
+      sumShown += LIST_PAGE;
+      renderSummaryList();
+    });
+
+    // 画面の幅が変わったら、グラフを描き直す
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => { if (sumResults.length && !$("app").hidden) renderSummaryChart(sumResults); }, 150);
     });
 
     $("logout").addEventListener("click", async () => {

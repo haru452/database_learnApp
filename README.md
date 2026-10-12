@@ -5,6 +5,7 @@
 - メール / パスワードでのログイン
 - 連続記録（ストリーク）の保存と表示
 - 添削した日記の保存（直近 7 日分）と、Web での閲覧
+- 要約練習（Versant 対策）の採点結果の保存と、Web での点数の推移グラフ
 
 ストリークはアプリで日記を添削したときに記録され、Web 版ではアプリと同じ記録と日記の履歴を見られます。
 
@@ -15,6 +16,7 @@
 | ファイル | 役割 |
 |---|---|
 | `supabase/schema.sql` | テーブル、アクセス制限（RLS）、ストリークや日記を扱う関数 |
+| `supabase/summary.sql` | 要約練習の採点結果のテーブルと関数（追加分） |
 | `src/streak-client.js` | ログイン・ストリーク・日記を呼ぶモジュール（どのフレームワークでも使える） |
 | `index.html` + `config.js` | Web 版の画面。そのまま Vercel に公開できる |
 | `.env.example` | Vite / Next.js に組み込むときの環境変数のひな形 |
@@ -30,6 +32,8 @@
 | `import_local_streak` | アプリ | ログイン前に端末で数えていた連続日数を、クラウドに引き継ぐ |
 | `save_diary_entry` | アプリ | 添削した日記を保存する（直近 7 日分だけ残す） |
 | `get_my_diary` | Web | 自分の日記の履歴を返す |
+| `save_summary_result` | アプリ | 要約練習の採点結果を保存する（新しい 1000 件まで残す） |
+| `get_my_summary_results` | Web | 自分の採点結果を新しい順に返す（点数の推移グラフ用） |
 
 `complete_study` の判定ルールは次のとおりです。
 
@@ -47,6 +51,7 @@
 
 1. [supabase.com](https://supabase.com) で **New project** を作る（Region は `Northeast Asia (Tokyo)` がおすすめ）。データベースのパスワードは控えておく。
 2. 左メニューの **SQL Editor** → **New query** を開き、`supabase/schema.sql` の中身をすべて貼り付けて **Run**。`Success` と出ればよい（何度実行しても問題ない）。
+   続けて、`supabase/summary.sql` も同じように **Run** する（要約練習の点数を保存・表示するため）。
 3. **Authentication → Sign In / Providers → Email** が有効になっているか確認する。
    - **Confirm email**（メール確認）：本番は ON のまま。ON の場合、登録後に届く確認メールのリンクを開くまでログインできない。
    - 家族や自分だけで使う場合は、アカウントを作ったあとに **Allow new users to sign up** をオフにすると、知らない人が登録できなくなる。
