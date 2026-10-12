@@ -94,7 +94,8 @@ export function createStreakApi(supabase) {
 
     /**
      * いま有効な連続日数。最後の学習が一昨日以前なら、途切れているので 0。
-     * @returns {{ streak: number, lastDate: string|null, studiedToday: boolean }}
+     * best は、これまでの最長記録 (アプリと共通)。
+     * @returns {{ streak: number, lastDate: string|null, studiedToday: boolean, best: number }}
      */
     async getStreak() {
       const row = await callRpc("get_my_streak");
@@ -102,16 +103,43 @@ export function createStreakApi(supabase) {
         streak: row ? row.streak : 0,
         lastDate: row ? row.last_date : null,
         studiedToday: row ? row.studied_today : false,
+        best: row ? Math.max(row.best_streak || 0, row.streak) : 0,
       };
     },
 
     /**
      * 「学習完了」。昨日まで続いていれば +1、今日すでに完了していればそのまま、空いていれば 1。
-     * @returns {{ streak: number, lastDate: string, alreadyDone: boolean }}
+     * @returns {{ streak: number, lastDate: string, alreadyDone: boolean, best: number }}
      */
     async completeStudy() {
       const row = await callRpc("complete_study");
-      return { streak: row.streak, lastDate: row.last_date, alreadyDone: row.already_done };
+      return {
+        streak: row.streak,
+        lastDate: row.last_date,
+        alreadyDone: row.already_done,
+        best: Math.max(row.best_streak || 0, row.streak),
+      };
+    },
+
+    // ---------------- 日記 (アプリで保存された、直近7日分) ----------------
+
+    /**
+     * 保存されている日記 (新しい順)。古いもの (7日より前) は、サーバーが自動で消す。
+     * @returns {Array<{ id: number, date: string, original: string, corrected: string,
+     *                   explanation: string, engine: string, createdAt: string }>}
+     */
+    async getDiary() {
+      const { data, error } = await supabase.rpc("get_my_diary", { p_timezone: timeZone() });
+      if (error) throw error;
+      return (data || []).map((r) => ({
+        id: r.id,
+        date: r.entry_date,
+        original: r.original_text,
+        corrected: r.corrected_text,
+        explanation: r.explanation || "",
+        engine: r.engine || "",
+        createdAt: r.created_at,
+      }));
     },
   };
 }
