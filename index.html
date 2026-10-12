@@ -22,7 +22,7 @@
       font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
     }
     .card {
-      width: 100%; max-width: 380px; background: var(--card); border: 1px solid var(--line);
+      width: 100%; max-width: 520px; background: var(--card); border: 1px solid var(--line);
       border-radius: 16px; padding: 28px 24px;
     }
     h1 { font-size: 1.15rem; margin: 0 0 20px; }
@@ -51,6 +51,17 @@
     .streak .num { font-size: 4rem; font-weight: 800; line-height: 1; color: var(--accent); }
     .streak .unit { font-size: 1rem; color: var(--muted); margin-top: 6px; }
     .streak .sub { font-size: .85rem; color: var(--muted); margin-top: 10px; min-height: 1.3em; }
+    .streak .best { font-size: .85rem; color: var(--muted); margin-top: 6px; }
+    h2 { font-size: 1rem; margin: 28px 0 4px; }
+    .hint { font-size: .8rem; color: var(--muted); margin: 0 0 12px; }
+    .day { font-size: .85rem; font-weight: 700; color: var(--muted); margin: 18px 0 8px; }
+    .entry { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 10px; }
+    .entry .meta { font-size: .75rem; color: var(--muted); margin-bottom: 8px; }
+    .entry .lbl { font-size: .7rem; font-weight: 700; color: var(--muted); margin: 8px 0 2px; }
+    .entry .lbl.fix { color: var(--accent); }
+    .entry p { margin: 0; white-space: pre-wrap; word-break: break-word; line-height: 1.55; }
+    .entry p.exp { font-size: .85rem; color: var(--muted); margin-top: 8px; }
+    .empty { font-size: .9rem; color: var(--muted); }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -86,9 +97,16 @@
         <div id="streak-num" class="num">0</div>
         <div class="unit">日連続</div>
         <div id="streak-sub" class="sub"></div>
+        <div id="streak-best" class="best"></div>
       </div>
       <button id="complete" type="button">今日の学習を完了する</button>
       <p id="app-msg" class="msg" role="status"></p>
+
+      <h2>日記の履歴</h2>
+      <p class="hint">アプリで添削した日記の、直近7日分です。</p>
+      <div id="diary-list"></div>
+      <p id="diary-msg" class="msg" role="status"></p>
+
       <button id="logout" class="link" type="button">ログアウト</button>
     </section>
   </main>
@@ -156,8 +174,9 @@
     });
 
     // ---------- ストリーク ----------
-    function renderStreak({ streak, studiedToday }) {
+    function renderStreak({ streak, studiedToday, best }) {
       $("streak-num").textContent = String(streak);
+      $("streak-best").textContent = `最長記録: ${Math.max(best || 0, streak)}日`;
       $("streak-sub").textContent = studiedToday
         ? "今日の学習は完了しています"
         : streak > 0
@@ -174,6 +193,58 @@
       } catch (err) {
         say($("app-msg"), friendlyError(err), "error");
       }
+      loadDiary();
+    }
+
+    // ---------- 日記の履歴 (文章は textContent で入れる。HTML として解釈させない) ----------
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function formatDay(isoDate) {
+      const d = new Date(isoDate + "T00:00:00");
+      return isNaN(d) ? isoDate : d.toLocaleDateString("ja-JP", { month: "long", day: "numeric", weekday: "short" });
+    }
+
+    function formatTime(iso) {
+      const d = new Date(iso);
+      return isNaN(d) ? "" : d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function renderDiary(entries) {
+      const list = $("diary-list");
+      list.replaceChildren();
+      if (entries.length === 0) {
+        list.append(el("p", "empty", "まだ日記がありません。アプリで日記を添削すると、ここに表示されます。"));
+        return;
+      }
+      let lastDate = null;
+      for (const e of entries) {
+        if (e.date !== lastDate) {
+          list.append(el("div", "day", formatDay(e.date)));
+          lastDate = e.date;
+        }
+        const card = el("div", "entry");
+        card.append(el("div", "meta", [formatTime(e.createdAt), e.engine].filter(Boolean).join("  ·  ")));
+        card.append(el("div", "lbl", "あなたの文章"));
+        card.append(el("p", "", e.original));
+        card.append(el("div", "lbl fix", "添削後"));
+        card.append(el("p", "", e.corrected));
+        if (e.explanation) card.append(el("p", "exp", e.explanation));
+        list.append(card);
+      }
+    }
+
+    async function loadDiary() {
+      say($("diary-msg"), "");
+      try {
+        renderDiary(await api.getDiary());
+      } catch (err) {
+        say($("diary-msg"), friendlyError(err), "error");
+      }
     }
 
     $("complete").addEventListener("click", async () => {
@@ -181,7 +252,7 @@
       say($("app-msg"), "");
       try {
         const r = await api.completeStudy();
-        renderStreak({ streak: r.streak, studiedToday: true });
+        renderStreak({ streak: r.streak, studiedToday: true, best: r.best });
         say($("app-msg"),
           r.alreadyDone ? "今日はすでに完了しています。" : `${r.streak}日連続になりました。`,
           "ok");
