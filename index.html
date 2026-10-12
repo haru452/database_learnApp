@@ -8,11 +8,14 @@
     :root {
       --bg: #f4f6f8; --card: #ffffff; --text: #1d2733; --muted: #6a7785;
       --line: #dfe5ea; --accent: #e8590c; --accent-dark: #c44a08; --ok: #2b8a3e; --error: #c92a2a;
+      /* 要約練習の項目ごとの色 (内容 / 構成 / 文法・語彙) */
+      --part-1: #2a78d6; --part-2: #eb6834; --part-3: #1baf7a;
     }
     @media (prefers-color-scheme: dark) {
       :root {
         --bg: #12181f; --card: #1b232c; --text: #e9eef3; --muted: #93a1af;
         --line: #2c3743; --accent: #ff8a3d; --accent-dark: #ffa563; --ok: #51cf66; --error: #ff8787;
+        --part-1: #3987e5; --part-2: #d95926; --part-3: #199e70;
       }
     }
     * { box-sizing: border-box; }
@@ -89,6 +92,24 @@
     .result .score small { font-size: .7rem; font-weight: 400; color: var(--muted); }
     .result a { color: var(--text); word-break: break-word; }
     .result details { margin-top: 8px; }
+    .result .parts-line { font-size: .78rem; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+    /* 項目ごとの点数 */
+    h3 { font-size: .9rem; margin: 22px 0 4px; }
+    .meters { margin: 8px 0 4px; }
+    .meter { display: grid; grid-template-columns: 6.5em 1fr 4.5em; gap: 10px; align-items: center; margin: 0 0 10px; }
+    .meter .name { font-size: .85rem; display: flex; align-items: center; gap: 6px; }
+    .meter .track { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+    .meter .fill { height: 100%; border-radius: 5px; }
+    .meter .val { font-size: .85rem; text-align: right; font-variant-numeric: tabular-nums; }
+    .swatch { flex: none; width: 10px; height: 10px; border-radius: 3px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .8rem; margin: 6px 0 4px; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .chart .seg-1 { fill: var(--part-1); }
+    .chart .seg-2 { fill: var(--part-2); }
+    .chart .seg-3 { fill: var(--part-3); }
+    .chart .col-hit { fill: transparent; }
+    .chart .col-hover { fill: var(--muted); fill-opacity: .1; }
+    .tip .row { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
     .result summary { cursor: pointer; font-size: .8rem; color: var(--muted); }
     [hidden] { display: none !important; }
   </style>
@@ -143,6 +164,17 @@
         <div id="sum-tip" class="tip" hidden></div>
         <figcaption id="sum-chart-desc" class="hint"></figcaption>
       </figure>
+      <section id="sum-parts" hidden>
+        <h3>項目ごとの点数</h3>
+        <p class="hint">内容 50点 + 構成 25点 + 文法・語彙 25点 = 100点</p>
+        <div id="sum-meters" class="meters"></div>
+        <figure id="sum-stack" class="chart">
+          <div id="sum-legend" class="legend"></div>
+          <svg id="sum-stack-svg" role="img" aria-labelledby="sum-stack-desc"></svg>
+          <div id="sum-stack-tip" class="tip" hidden></div>
+          <figcaption id="sum-stack-desc" class="hint"></figcaption>
+        </figure>
+      </section>
       <div id="sum-list"></div>
       <button id="sum-more" class="link" type="button" hidden>もっと見る</button>
       <p id="sum-msg" class="msg" role="status"></p>
@@ -441,6 +473,167 @@
         `${n}回分の点数の推移（古い順）。最新は${lastScore}点、最高は${Math.max(...results.map((r) => r.score))}点。`;
     }
 
+    // ---------- 項目ごとの点数 (内容 / 構成 / 文法・語彙) ----------
+    const PARTS = [
+      { key: "contentScore", name: "内容", max: 50, cls: "seg-1", color: "var(--part-1)" },
+      { key: "organizationScore", name: "構成", max: 25, cls: "seg-2", color: "var(--part-2)" },
+      { key: "languageScore", name: "文法・語彙", max: 25, cls: "seg-3", color: "var(--part-3)" },
+    ];
+    const STACK_COUNT = 20;   // 内訳のグラフに出す回数 (直近)
+    const AVERAGE_COUNT = 5;  // 平均を出す回数 (直近)
+
+    const hasParts = (r) => PARTS.every((p) => Number.isFinite(r[p.key]));
+
+    function swatch(color) {
+      const s = el("span", "swatch");
+      s.style.background = color;
+      return s;
+    }
+
+    function partsText(r) {
+      return PARTS.map((p) => `${p.name} ${r[p.key]}/${p.max}`).join("  ·  ");
+    }
+
+    // 直近の平均を、満点に対する割合のバーで表示する (どの項目が弱いかが分かる)
+    function renderPartMeters(withParts) {
+      const box = $("sum-meters");
+      box.replaceChildren();
+      const recent = withParts.slice(-AVERAGE_COUNT);
+      for (const p of PARTS) {
+        const avg = recent.reduce((a, r) => a + r[p.key], 0) / recent.length;
+        const row = el("div", "meter");
+        const name = el("div", "name");
+        name.append(swatch(p.color), el("span", "", p.name));
+        const track = el("div", "track");
+        const fill = el("div", "fill");
+        fill.style.width = `${(avg / p.max) * 100}%`;
+        fill.style.background = p.color;
+        track.append(fill);
+        row.append(name, track, el("div", "val", `${avg.toFixed(1)} / ${p.max}`));
+        box.append(row);
+      }
+      box.append(el("p", "hint", `直近${recent.length}回の平均`));
+    }
+
+    // 1回ごとに、3項目を積み上げた棒 (棒の高さ = 合計点)
+    function renderPartStack(withParts) {
+      const results = withParts.slice(-STACK_COUNT);
+      const svg = $("sum-stack-svg");
+      const tip = $("sum-stack-tip");
+      svg.replaceChildren();
+      tip.hidden = true;
+
+      const legend = $("sum-legend");
+      legend.replaceChildren();
+      for (const p of PARTS) {
+        const item = el("span");
+        item.append(swatch(p.color), document.createTextNode(`${p.name}（${p.max}点）`));
+        legend.append(item);
+      }
+
+      const W = svg.clientWidth || 470;
+      const H = 200;
+      const m = { left: 30, right: 8, top: 10, bottom: 24 };
+      const iw = W - m.left - m.right;
+      const ih = H - m.top - m.bottom;
+      const n = results.length;
+      const slot = iw / Math.max(n, 8);               // 回数が少ないときも、棒が太くなりすぎないよう 8 回分の枠は確保する
+      const barW = Math.min(24, slot * 0.6);
+      const cx = (i) => m.left + slot * (i + 0.5);
+      const y = (v) => m.top + ih * (1 - v / 100);
+      const GAP = 2;                                  // 項目の間のすき間
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+      for (const v of [0, 25, 50, 75, 100]) {
+        svg.append(svgEl("line", { class: "grid", x1: m.left, x2: W - m.right, y1: y(v), y2: y(v) }));
+        const t = svgEl("text", { class: "tick", x: m.left - 6, y: y(v) + 4, "text-anchor": "end" });
+        t.textContent = String(v);
+        svg.append(t);
+      }
+
+      const first = svgEl("text", { class: "tick", x: cx(0), y: H - 6, "text-anchor": "start" });
+      first.textContent = formatShortDate(results[0].createdAt);
+      svg.append(first);
+      if (n > 1) {
+        const last = svgEl("text", { class: "tick", x: cx(n - 1), y: H - 6, "text-anchor": "end" });
+        last.textContent = formatShortDate(results[n - 1].createdAt);
+        svg.append(last);
+      }
+
+      const hover = svgEl("rect", { class: "col-hover", y: m.top, width: slot, height: ih, visibility: "hidden" });
+      svg.append(hover);
+
+      results.forEach((r, i) => {
+        const x0 = cx(i) - barW / 2;
+        let base = 0;
+        const segs = PARTS.map((p) => ({ p, from: base, to: (base += r[p.key]) })).filter((s) => s.to > s.from);
+        segs.forEach((s, k) => {
+          const top = y(s.to);
+          const bottom = y(s.from) - (k > 0 ? GAP : 0);
+          const h = Math.max(0, bottom - top);
+          if (h <= 0) return;
+          if (k === segs.length - 1) {
+            // いちばん上の項目だけ、上の角を丸くする (下は土台にそろえて四角のまま)
+            const rr = Math.min(4, h, barW / 2);
+            svg.append(svgEl("path", {
+              class: s.p.cls,
+              d: `M${x0},${bottom} V${top + rr} Q${x0},${top} ${x0 + rr},${top} H${x0 + barW - rr} ` +
+                 `Q${x0 + barW},${top} ${x0 + barW},${top + rr} V${bottom} Z`,
+            }));
+          } else {
+            svg.append(svgEl("rect", { class: s.p.cls, x: x0, y: top, width: barW, height: h }));
+          }
+        });
+      });
+
+      // ホバー / タップ: その回の内訳を出す
+      function showAt(clientX) {
+        const box = svg.getBoundingClientRect();
+        const px = ((clientX - box.left) / box.width) * W;
+        const i = Math.floor((px - m.left) / slot);
+        if (i < 0 || i >= n) { hide(); return; }
+        const r = results[i];
+        hover.setAttribute("x", m.left + slot * i);
+        hover.setAttribute("visibility", "visible");
+
+        tip.replaceChildren(
+          el("div", "score", `合計 ${r.score}点`),
+          el("div", "sub", formatDateTime(r.createdAt)));
+        for (const p of PARTS.slice().reverse()) {   // 棒と同じ並び (上から)
+          const row = el("div", "row");
+          row.append(swatch(p.color), el("span", "", `${p.name} ${r[p.key]} / ${p.max}`));
+          tip.append(row);
+        }
+        tip.hidden = false;
+        const scale = box.width / W;
+        const xs = cx(i) * scale;
+        const left = xs + 16 + tip.offsetWidth > box.width ? xs - 16 - tip.offsetWidth : xs + 16;
+        tip.style.left = `${Math.max(0, left)}px`;
+        tip.style.top = `${$("sum-legend").offsetHeight}px`;
+      }
+
+      function hide() {
+        hover.setAttribute("visibility", "hidden");
+        tip.hidden = true;
+      }
+
+      svg.onpointermove = (e) => showAt(e.clientX);
+      svg.onpointerdown = (e) => showAt(e.clientX);
+      svg.onpointerleave = hide;
+
+      const avg = (key) => (results.reduce((a, r) => a + r[key], 0) / n).toFixed(1);
+      $("sum-stack-desc").textContent =
+        `直近${n}回の内訳（古い順）。平均は ` + PARTS.map((p) => `${p.name} ${avg(p.key)}/${p.max}`).join("、") + "。";
+    }
+
+    function renderSummaryParts(results) {
+      const withParts = results.filter(hasParts);
+      $("sum-parts").hidden = withParts.length === 0;   // 項目別の採点を入れる前の結果しか無い場合は出さない
+      if (withParts.length === 0) return;
+      renderPartMeters(withParts);
+      renderPartStack(withParts);
+    }
+
     function youtubeUrl(videoId) {
       return /^[\w-]{6,20}$/.test(videoId) ? `https://www.youtube.com/watch?v=${videoId}` : "";
     }
@@ -468,6 +661,7 @@
           head.append(el("span", "", r.videoTitle));
         }
         card.append(head);
+        if (hasParts(r)) card.append(el("div", "parts-line", partsText(r)));
 
         const details = el("details");
         details.append(el("summary", "", "詳しく見る"));
@@ -492,6 +686,7 @@
       if (sumResults.length === 0) {
         $("sum-stats").hidden = true;
         $("sum-chart").hidden = true;
+        $("sum-parts").hidden = true;
         $("sum-more").hidden = true;
         $("sum-list").replaceChildren(
           el("p", "empty", "まだ結果がありません。アプリの「Summary」で動画を要約すると、ここに点数の推移が表示されます。"));
@@ -499,6 +694,7 @@
       }
       renderSummaryStats(sumResults);
       renderSummaryChart(sumResults);
+      renderSummaryParts(sumResults);
       renderSummaryList();
     }
 
@@ -522,7 +718,11 @@
     let resizeTimer;
     window.addEventListener("resize", () => {
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => { if (sumResults.length && !$("app").hidden) renderSummaryChart(sumResults); }, 150);
+      resizeTimer = setTimeout(() => {
+        if (!sumResults.length || $("app").hidden) return;
+        renderSummaryChart(sumResults);
+        renderSummaryParts(sumResults);
+      }, 150);
     });
 
     $("logout").addEventListener("click", async () => {

@@ -147,7 +147,9 @@ export function createStreakApi(supabase) {
     /**
      * 採点結果 (新しい順)。点数の推移を見るため、古いものも残っている (新しい 1000 件まで)。
      * @returns {Array<{ id: number, date: string, createdAt: string, videoId: string, videoTitle: string,
-     *                   timeLimit: number, score: number, transcript: string, referenceSummary: string,
+     *                   timeLimit: number, score: number, contentScore: number|null,
+     *                   organizationScore: number|null, languageScore: number|null,
+     *                   transcript: string, referenceSummary: string,
      *                   goodPoints: string, missedPoints: string, languageFeedback: string,
      *                   improvedSummary: string }>}
      */
@@ -165,6 +167,10 @@ export function createStreakApi(supabase) {
         videoTitle: r.video_title || "",
         timeLimit: r.time_limit_seconds,
         score: r.score,
+        // 項目ごとの点数 (内容 50 + 構成 25 + 文法・語彙 25)。項目別の採点を入れる前の結果は null
+        contentScore: r.content_score,
+        organizationScore: r.organization_score,
+        languageScore: r.language_score,
         transcript: r.transcript || "",
         referenceSummary: r.reference_summary || "",
         goodPoints: r.good_points || "",
