@@ -1,286 +1,231 @@
-<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>学習ストリーク</title>
-  <style>
-    :root {
-      --bg: #f4f6f8; --card: #ffffff; --text: #1d2733; --muted: #6a7785;
-      --line: #dfe5ea; --accent: #e8590c; --accent-dark: #c44a08; --ok: #2b8a3e; --error: #c92a2a;
+// Diary reminder Worker
+//
+//  POST /ping  : アプリが「今日の日記を書いた」と連絡する  { "date": "2026-10-10", "streak": 7 }
+//  POST /test  : 状態に関係なく、リマインドをすぐ Discord に送る (動作確認用)
+//  POST /status: 記録の状態を JSON で返す (アプリからの連絡が届いているかの確認用)
+//  POST /check : 定期実行と同じ判断を今すぐ行う。/check?dry=1 なら送信せず、判断の結果だけ返す
+//  cron        : 毎日決まった時刻に、今日の日記が書かれていなければ Discord に通知する
+//
+// どちらの POST も  Authorization: Bearer <APP_SECRET>  が必要。
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (request.method !== "POST") {
+      return new Response("Not found", { status: 404 });
     }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #12181f; --card: #1b232c; --text: #e9eef3; --muted: #93a1af;
-        --line: #2c3743; --accent: #ff8a3d; --accent-dark: #ffa563; --ok: #51cf66; --error: #ff8787;
-      }
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px;
-      background: var(--bg); color: var(--text);
-      font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
-    }
-    .card {
-      width: 100%; max-width: 520px; background: var(--card); border: 1px solid var(--line);
-      border-radius: 16px; padding: 28px 24px;
-    }
-    h1 { font-size: 1.15rem; margin: 0 0 20px; }
-    label { display: block; font-size: .85rem; color: var(--muted); margin: 14px 0 6px; }
-    input {
-      width: 100%; padding: 11px 12px; font-size: 1rem; color: var(--text); background: transparent;
-      border: 1px solid var(--line); border-radius: 10px;
-    }
-    input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-    button {
-      width: 100%; margin-top: 20px; padding: 13px; font-size: 1rem; font-weight: 600; cursor: pointer;
-      color: #fff; background: var(--accent); border: 0; border-radius: 10px;
-    }
-    button:hover:not(:disabled) { background: var(--accent-dark); }
-    button:disabled { opacity: .55; cursor: not-allowed; }
-    button.link {
-      width: auto; margin: 14px 0 0; padding: 0; font-weight: 400; font-size: .9rem;
-      color: var(--muted); background: none; text-decoration: underline;
-    }
-    button.link:hover:not(:disabled) { background: none; color: var(--text); }
-    .msg { min-height: 1.4em; margin: 14px 0 0; font-size: .9rem; }
-    .msg.error { color: var(--error); }
-    .msg.ok { color: var(--ok); }
-    .who { font-size: .85rem; color: var(--muted); word-break: break-all; margin: 0 0 18px; }
-    .streak { text-align: center; padding: 18px 0 8px; }
-    .streak .num { font-size: 4rem; font-weight: 800; line-height: 1; color: var(--accent); }
-    .streak .unit { font-size: 1rem; color: var(--muted); margin-top: 6px; }
-    .streak .sub { font-size: .85rem; color: var(--muted); margin-top: 10px; min-height: 1.3em; }
-    .streak .best { font-size: .85rem; color: var(--muted); margin-top: 6px; }
-    h2 { font-size: 1rem; margin: 28px 0 4px; }
-    .hint { font-size: .8rem; color: var(--muted); margin: 0 0 12px; }
-    .day { font-size: .85rem; font-weight: 700; color: var(--muted); margin: 18px 0 8px; }
-    .entry { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 10px; }
-    .entry .meta { font-size: .75rem; color: var(--muted); margin-bottom: 8px; }
-    .entry .lbl { font-size: .7rem; font-weight: 700; color: var(--muted); margin: 8px 0 2px; }
-    .entry .lbl.fix { color: var(--accent); }
-    .entry p { margin: 0; white-space: pre-wrap; word-break: break-word; line-height: 1.55; }
-    .entry p.exp { font-size: .85rem; color: var(--muted); margin-top: 8px; }
-    .empty { font-size: .9rem; color: var(--muted); }
-    [hidden] { display: none !important; }
-  </style>
-</head>
-<body>
-  <main class="card">
-    <p id="loading" class="msg">読み込み中...</p>
-
-    <!-- 設定が未入力のとき -->
-    <section id="setup" hidden>
-      <h1>設定が必要です</h1>
-      <p class="msg error">config.js の SUPABASE_URL と SUPABASE_ANON_KEY を、自分のプロジェクトの値に書き換えてください。</p>
-    </section>
-
-    <!-- ログイン / 新規登録 -->
-    <section id="auth" hidden>
-      <h1 id="auth-title">ログイン</h1>
-      <form id="auth-form" novalidate>
-        <label for="email">メールアドレス</label>
-        <input id="email" type="email" autocomplete="email" required>
-        <label for="password">パスワード (8文字以上)</label>
-        <input id="password" type="password" minlength="8" autocomplete="current-password" required>
-        <button id="auth-submit" type="submit">ログイン</button>
-      </form>
-      <button id="auth-toggle" class="link" type="button">アカウントを作成する</button>
-      <p id="auth-msg" class="msg" role="status"></p>
-    </section>
-
-    <!-- ログイン後 -->
-    <section id="app" hidden>
-      <h1>学習ストリーク</h1>
-      <p id="who" class="who"></p>
-      <div class="streak">
-        <div id="streak-num" class="num">0</div>
-        <div class="unit">日連続</div>
-        <div id="streak-sub" class="sub"></div>
-        <div id="streak-best" class="best"></div>
-      </div>
-      <button id="complete" type="button">今日の学習を完了する</button>
-      <p id="app-msg" class="msg" role="status"></p>
-
-      <h2>日記の履歴</h2>
-      <p class="hint">アプリで添削した日記の、直近7日分です。</p>
-      <div id="diary-list"></div>
-      <p id="diary-msg" class="msg" role="status"></p>
-
-      <button id="logout" class="link" type="button">ログアウト</button>
-    </section>
-  </main>
-
-  <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-    import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-    import { createStreakApi, friendlyError } from "./src/streak-client.js";
-
-    const $ = (id) => document.getElementById(id);
-    const show = (name) => {
-      for (const id of ["loading", "setup", "auth", "app"]) $(id).hidden = id !== name;
-    };
-    const say = (el, text, kind = "") => { el.textContent = text; el.className = "msg " + kind; };
-
-    if (SUPABASE_URL.includes("YOUR-PROJECT-REF") || SUPABASE_ANON_KEY === "YOUR-ANON-KEY") {
-      show("setup");
-      throw new Error("config.js is not configured");
+    if (!(await isAuthorized(request, env))) {
+      return new Response("Unauthorized", { status: 401 });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const api = createStreakApi(supabase);
-
-    // ---------- ログイン / 新規登録 ----------
-    let mode = "signin";
-    function setMode(next) {
-      mode = next;
-      const signup = mode === "signup";
-      $("auth-title").textContent = signup ? "アカウント作成" : "ログイン";
-      $("auth-submit").textContent = signup ? "登録する" : "ログイン";
-      $("auth-toggle").textContent = signup ? "ログインに戻る" : "アカウントを作成する";
-      $("password").autocomplete = signup ? "new-password" : "current-password";
-      say($("auth-msg"), "");
-    }
-    $("auth-toggle").addEventListener("click", () => setMode(mode === "signin" ? "signup" : "signin"));
-
-    $("auth-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const email = $("email").value.trim();
-      const password = $("password").value;
-      if (!email || password.length < 8) {
-        say($("auth-msg"), "メールアドレスと、8文字以上のパスワードを入力してください。", "error");
-        return;
-      }
-
-      $("auth-submit").disabled = true;
-      say($("auth-msg"), "処理中...");
+    if (url.pathname === "/ping") {
+      let body;
       try {
-        if (mode === "signup") {
-          const { needsEmailConfirmation } = await api.signUp(email, password);
-          if (needsEmailConfirmation) {
-            setMode("signin");   // setMode はメッセージを消すので、先に呼ぶ
-            say($("auth-msg"), "確認メールを送信しました。メール内のリンクを開いてから、ログインしてください。", "ok");
-          }
-          // 確認が不要な設定なら、そのままログイン状態になり、onAuthChange で画面が切り替わる
-        } else {
-          await api.signIn(email, password);
-        }
-        $("password").value = "";
-      } catch (err) {
-        say($("auth-msg"), friendlyError(err), "error");
-      } finally {
-        $("auth-submit").disabled = false;
+        body = await request.json();
+      } catch {
+        return new Response("Bad JSON", { status: 400 });
       }
-    });
 
-    // ---------- ストリーク ----------
-    function renderStreak({ streak, studiedToday, best }) {
-      $("streak-num").textContent = String(streak);
-      $("streak-best").textContent = `最長記録: ${Math.max(best || 0, streak)}日`;
-      $("streak-sub").textContent = studiedToday
-        ? "今日の学習は完了しています"
-        : streak > 0
-          ? "今日学習すると、連続記録が続きます"
-          : "今日から始めましょう";
-      $("complete").disabled = studiedToday;
-      $("complete").textContent = studiedToday ? "今日は完了済みです" : "今日の学習を完了する";
+      const date = String(body.date ?? "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return new Response("Bad date", { status: 400 });
+      }
+      const streak = Number.isInteger(body.streak) && body.streak >= 0 ? body.streak : 0;
+
+      // 日付が古い連絡(遅れて届いたもの)で、新しい記録を上書きしない
+      const state = await readState(env);
+      if (!state.lastDate || date >= state.lastDate) {
+        await env.DIARY_KV.put("state", JSON.stringify({ lastDate: date, streak }));
+      }
+      return new Response("ok");
     }
 
-    async function loadStreak() {
-      say($("app-msg"), "");
+    if (url.pathname === "/check") {
+      // 定期実行と同じ処理。dry=1 のときは、Discord に送らず、判断の結果だけ返す
       try {
-        renderStreak(await api.getStreak());
-      } catch (err) {
-        say($("app-msg"), friendlyError(err), "error");
-      }
-      loadDiary();
-    }
-
-    // ---------- 日記の履歴 (文章は textContent で入れる。HTML として解釈させない) ----------
-    function el(tag, className, text) {
-      const node = document.createElement(tag);
-      if (className) node.className = className;
-      if (text !== undefined) node.textContent = text;
-      return node;
-    }
-
-    function formatDay(isoDate) {
-      const d = new Date(isoDate + "T00:00:00");
-      return isNaN(d) ? isoDate : d.toLocaleDateString("ja-JP", { month: "long", day: "numeric", weekday: "short" });
-    }
-
-    function formatTime(iso) {
-      const d = new Date(iso);
-      return isNaN(d) ? "" : d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-    }
-
-    function renderDiary(entries) {
-      const list = $("diary-list");
-      list.replaceChildren();
-      if (entries.length === 0) {
-        list.append(el("p", "empty", "まだ日記がありません。アプリで日記を添削すると、ここに表示されます。"));
-        return;
-      }
-      let lastDate = null;
-      for (const e of entries) {
-        if (e.date !== lastDate) {
-          list.append(el("div", "day", formatDay(e.date)));
-          lastDate = e.date;
-        }
-        const card = el("div", "entry");
-        card.append(el("div", "meta", [formatTime(e.createdAt), e.engine].filter(Boolean).join("  ·  ")));
-        card.append(el("div", "lbl", "あなたの文章"));
-        card.append(el("p", "", e.original));
-        card.append(el("div", "lbl fix", "添削後"));
-        card.append(el("p", "", e.corrected));
-        if (e.explanation) card.append(el("p", "exp", e.explanation));
-        list.append(card);
+        const dryRun = url.searchParams.get("dry") === "1";
+        return new Response(await checkAndRemind(env, { dryRun }));
+      } catch (e) {
+        return new Response("Failed: " + (e && e.message ? e.message : String(e)), { status: 500 });
       }
     }
 
-    async function loadDiary() {
-      say($("diary-msg"), "");
+    if (url.pathname === "/status") {
+      // 現在の記録を確認する (アプリからの連絡が届いているかの確認用)
+      const today = todayInTimezone(env);
+      const state = await readState(env);
+      const status = {
+        today,                                   // Worker が考えている「今日」(TIMEZONE 基準)
+        lastDate: state.lastDate,                // アプリから最後に連絡があった「日記を書いた日」
+        streak: state.streak,
+        doneToday: state.lastDate === today,     // true なら、今日はリマインドが送られない
+        remindedDate: await env.DIARY_KV.get("reminded"),   // 最後にリマインドを送った日
+      };
+      return new Response(JSON.stringify(status, null, 2), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (url.pathname === "/test") {
       try {
-        renderDiary(await api.getDiary());
-      } catch (err) {
-        say($("diary-msg"), friendlyError(err), "error");
+        const today = todayInTimezone(env);
+        await sendReminder(env, await readState(env), today);
+        return new Response("sent");
+      } catch (e) {
+        // 原因が分かるメッセージを返す (動作確認用)
+        return new Response("Failed: " + (e && e.message ? e.message : String(e)), { status: 500 });
       }
     }
 
-    $("complete").addEventListener("click", async () => {
-      $("complete").disabled = true;   // 連打を防ぐ
-      say($("app-msg"), "");
-      try {
-        const r = await api.completeStudy();
-        renderStreak({ streak: r.streak, studiedToday: true, best: r.best });
-        say($("app-msg"),
-          r.alreadyDone ? "今日はすでに完了しています。" : `${r.streak}日連続になりました。`,
-          "ok");
-      } catch (err) {
-        say($("app-msg"), friendlyError(err), "error");
-        $("complete").disabled = false;
-      }
-    });
+    return new Response("Not found", { status: 404 });
+  },
 
-    $("logout").addEventListener("click", async () => {
-      try { await api.signOut(); } catch (err) { say($("app-msg"), friendlyError(err), "error"); }
-    });
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      checkAndRemind(env).then((result) => {
+        console.log("[cron] " + result);   // Observability のログで、定期実行の結果を確認できる
+      })
+    );
+  },
+};
 
-    // ---------- ログイン状態に合わせて画面を切り替える ----------
-    api.onAuthChange((user) => {
-      if (user) {
-        $("who").textContent = user.email || "";
-        show("app");
-        loadStreak();
-      } else {
-        show("auth");
-      }
-    });
+// ------------------------------------------------------------
+// Reminder
+// ------------------------------------------------------------
+// 戻り値: 何をしたか (または、なぜ送らなかったか) の説明
+async function checkAndRemind(env, { dryRun = false } = {}) {
+  const today = todayInTimezone(env);
+  const state = await readState(env);
 
-    // 日付をまたいで開きっぱなしだった場合に、戻ってきたとき表示を最新にする
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && !$("app").hidden) loadStreak();
-    });
-  </script>
-</body>
-</html>
+  // 今日はもう書いている
+  if (state.lastDate === today) {
+    return `skipped: today's diary is already recorded (today=${today}, lastDate=${state.lastDate})`;
+  }
+
+  // 同じ日に二重送信しない (cron の再実行対策)
+  if ((await env.DIARY_KV.get("reminded")) === today) {
+    return `skipped: a reminder was already sent today (today=${today})`;
+  }
+
+  if (dryRun) {
+    return `would send a reminder now (today=${today}, lastDate=${state.lastDate})`;
+  }
+
+  await sendReminder(env, state, today);
+  await env.DIARY_KV.put("reminded", today);
+  return `sent a reminder (today=${today}, lastDate=${state.lastDate})`;
+}
+
+async function sendReminder(env, state, today) {
+  const yesterday = addDays(today, -1);
+
+  let text;
+  if (state.lastDate === yesterday && state.streak > 0) {
+    // 昨日まで続いている → 今日書かないと途切れる
+    text =
+      "\u{1F4D3} Reminder: you haven't written today's diary yet.\n" +
+      `Your **${state.streak}-day streak** ends tonight if you skip. Take a minute to speak your diary!`;
+  } else {
+    text = "\u{1F4D3} Reminder: you haven't written today's diary yet. Take a minute to speak your diary!";
+  }
+
+  // DISCORD_USER_ID があれば、その人にだけメンションして通知が鳴るようにする
+  const userId = env.DISCORD_USER_ID;
+  const payload = userId
+    ? { content: `<@${userId}> ${text}`, allowed_mentions: { users: [String(userId)] } }
+    : { content: text, allowed_mentions: { parse: [] } };
+
+  const response = await fetch(getWebhookUrl(env), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Discord webhook failed: ${response.status} ${await response.text()}`);
+  }
+}
+
+// ------------------------------------------------------------
+// Helpers
+// ------------------------------------------------------------
+const DISCORD_HOSTS = ["discord.com", "discordapp.com", "ptb.discord.com", "canary.discord.com"];
+
+// Webhook URL が Discord のものか確認してから使う。
+// (workers.dev など別の URL を登録してしまうと、Cloudflare のエラー 1042 になるため)
+function getWebhookUrl(env) {
+  const raw = String(env.DISCORD_WEBHOOK_URL || "").trim();
+  if (!raw) {
+    throw new Error("DISCORD_WEBHOOK_URL is not set. Add it as a Secret in the Worker settings.");
+  }
+
+  let u;
+  try {
+    u = new URL(raw);
+  } catch {
+    throw new Error("DISCORD_WEBHOOK_URL is not a valid URL.");
+  }
+
+  if (u.protocol !== "https:" || !DISCORD_HOSTS.includes(u.hostname) || !u.pathname.startsWith("/api/webhooks/")) {
+    throw new Error(
+      "DISCORD_WEBHOOK_URL must look like https://discord.com/api/webhooks/<id>/<token> " +
+        `(the registered URL points to host: ${u.hostname}).`
+    );
+  }
+  return u.toString();
+}
+
+async function readState(env) {
+  const raw = await env.DIARY_KV.get("state");
+  if (!raw) return { lastDate: null, streak: 0 };
+  try {
+    const s = JSON.parse(raw);
+    return { lastDate: s.lastDate ?? null, streak: s.streak ?? 0 };
+  } catch {
+    return { lastDate: null, streak: 0 };
+  }
+}
+
+// 指定タイムゾーン (既定: Asia/Tokyo) での今日の日付 "YYYY-MM-DD"
+function todayInTimezone(env) {
+  const timeZone = env.TIMEZONE || "Asia/Tokyo";
+  // 1日の切り替わり時刻 (例: 3 → 夜中の 3:00 までは前の日として扱う)。アプリ・Supabase と同じ値にする
+  const startHour = Number(env.DAY_START_HOUR ?? 3);
+  const shifted = new Date(Date.now() - startHour * 3600 * 1000);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(shifted);
+}
+
+function addDays(dateString, delta) {
+  const d = new Date(`${dateString}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
+async function isAuthorized(request, env) {
+  const expected = env.APP_SECRET;
+  if (!expected) return false;
+
+  const header = request.headers.get("Authorization") || "";
+  const given = header.startsWith("Bearer ") ? header.slice(7) : "";
+  return timingSafeEqual(given, expected);
+}
+
+// 文字列の比較にかかる時間から秘密を推測されないよう、長さが違っても同じ処理を通す
+async function timingSafeEqual(a, b) {
+  const enc = new TextEncoder();
+  const [ha, hb] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(a)),
+    crypto.subtle.digest("SHA-256", enc.encode(b)),
+  ]);
+  const va = new Uint8Array(ha);
+  const vb = new Uint8Array(hb);
+  let diff = 0;
+  for (let i = 0; i < va.length; i++) diff |= va[i] ^ vb[i];
+  return diff === 0;
+}
