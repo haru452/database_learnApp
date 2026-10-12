@@ -7,5 +7,5 @@
 // anon キーは「ブラウザに公開される前提」の鍵なので、このファイルを GitHub に上げても問題ない。
 // (データの保護は、schema.sql の RLS が担当している)
 // ただし、"service_role" キー (secret) は、絶対にここへ書かない。
-export const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
-export const SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
+export const SUPABASE_URL = "https://hfwwnwttpenxrdbfjcpf.supabase.co";
+export const SUPABASE_ANON_KEY = "sb_publishable_GxVLkKfA7u7nj3-qpBfyAA_qajdKprI";
