@@ -1,0 +1,145 @@
+// streak-client.js
+// Supabase の認証 (メール/パスワード) と、連続学習記録 (ストリーク) を扱う小さなモジュール。
+// どのフレームワークでも使えるよう、Supabase のクライアントは「外から渡す」形にしている。
+//
+//   import { createClient } from "@supabase/supabase-js";
+//   import { createStreakApi } from "./streak-client.js";
+//
+//   const supabase = createClient(URL, ANON_KEY);
+//   const api = createStreakApi(supabase);
+//
+//   await api.signUp(email, password);
+//   await api.signIn(email, password);
+//   const { streak } = await api.getStreak();        // 画面に表示する連続日数
+//   const result = await api.completeStudy();         // 「学習完了」ボタン
+
+export function createStreakApi(supabase) {
+  // 「今日」の判定に使うタイムゾーン (利用者の端末の設定。例: "Asia/Tokyo")。
+  // 日付の判定そのものは、DB 側 (サーバーの時刻) で行う
+  function timeZone() {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    } catch {
+      return "UTC";
+    }
+  }
+
+  async function callRpc(name) {
+    const { data, error } = await supabase.rpc(name, { p_timezone: timeZone() });
+    if (error) throw error;
+    return Array.isArray(data) ? data[0] : data;
+  }
+
+  return {
+    // ---------------- 認証 ----------------
+
+    /**
+     * 新規登録。メール確認が ON のプロジェクトでは、確認メールのリンクを開くまでログインできない。
+     * @returns {{ needsEmailConfirmation: boolean }}
+     */
+    async signUp(email, password) {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (error) throw error;
+
+      // 登録済みのメールアドレスで、メール確認が ON の場合、Supabase はエラーを返さず、
+      // identities が空のユーザーを返す (登録の有無を外部から調べられないようにするため)
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        const err = new Error("User already registered");
+        err.code = "user_already_exists";
+        throw err;
+      }
+      return { needsEmailConfirmation: !data.session };
+    },
+
+    async signIn(email, password) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      return data.user;
+    },
+
+    async signOut() {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    },
+
+    /** 現在ログイン中のユーザー (未ログインなら null) */
+    async getUser() {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      return data.session ? data.session.user : null;
+    },
+
+    /**
+     * ログイン状態の変化を監視する。callback(user | null)。解除用の関数を返す。
+     * 同じユーザーのままトークンが更新されただけのときは、呼ばない。
+     */
+    onAuthChange(callback) {
+      let lastId;   // undefined = まだ一度も通知していない
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        const user = session ? session.user : null;
+        const id = user ? user.id : null;
+        if (id === lastId) return;
+        lastId = id;
+        // コールバックの中で、すぐに Supabase を呼ぶと止まることがあるため、次のタイミングに回す
+        setTimeout(() => callback(user), 0);
+      });
+      return () => data.subscription.unsubscribe();
+    },
+
+    // ---------------- ストリーク ----------------
+
+    /**
+     * いま有効な連続日数。最後の学習が一昨日以前なら、途切れているので 0。
+     * @returns {{ streak: number, lastDate: string|null, studiedToday: boolean }}
+     */
+    async getStreak() {
+      const row = await callRpc("get_my_streak");
+      return {
+        streak: row ? row.streak : 0,
+        lastDate: row ? row.last_date : null,
+        studiedToday: row ? row.studied_today : false,
+      };
+    },
+
+    /**
+     * 「学習完了」。昨日まで続いていれば +1、今日すでに完了していればそのまま、空いていれば 1。
+     * @returns {{ streak: number, lastDate: string, alreadyDone: boolean }}
+     */
+    async completeStudy() {
+      const row = await callRpc("complete_study");
+      return { streak: row.streak, lastDate: row.last_date, alreadyDone: row.already_done };
+    },
+  };
+}
+
+/** Supabase のエラーを、画面に出せる日本語のメッセージにする */
+export function friendlyError(error) {
+  const code = error && error.code;
+  const message = (error && error.message) || String(error);
+
+  const byCode = {
+    invalid_credentials: "メールアドレスまたはパスワードが違います。",
+    email_not_confirmed: "メールアドレスの確認がまだです。届いた確認メールのリンクを開いてください。",
+    user_already_exists: "このメールアドレスは、すでに登録されています。ログインしてください。",
+    weak_password: "パスワードが弱すぎます。8文字以上で、推測されにくいものにしてください。",
+    over_email_send_rate_limit: "確認メールの送信回数の上限に達しました。しばらく待ってから、もう一度お試しください。",
+    over_request_rate_limit: "操作が多すぎます。しばらく待ってから、もう一度お試しください。",
+    signup_disabled: "現在、新規登録は受け付けていません。",
+    validation_failed: "入力内容を確認してください。",
+  };
+  if (code && byCode[code]) return byCode[code];
+
+  // コードが無い古い形式のエラー向けに、文面でも判定する
+  if (/invalid login credentials/i.test(message)) return byCode.invalid_credentials;
+  if (/email not confirmed/i.test(message)) return byCode.email_not_confirmed;
+  if (/already registered/i.test(message)) return byCode.user_already_exists;
+  if (/at least \d+ characters/i.test(message)) return "パスワードが短すぎます。";
+  if (/not authenticated/i.test(message)) return "ログインの有効期限が切れました。もう一度ログインしてください。";
+  if (/failed to fetch|networkerror|load failed/i.test(message)) return "通信に失敗しました。ネットワークを確認してください。";
+
+  return "エラーが発生しました: " + message;
+}
