@@ -9,7 +9,7 @@
 -- 合計はアプリで計算し、サーバーでは内訳と合っているかを確かめる。
 -- (項目別の採点を入れる前に保存した結果は、内訳が null になる)
 --
--- 点数の推移を見るため、日記と違って古い結果も残す (1人あたり新しい 1000 件まで)。
+-- 容量を節約するため、1人あたり新しい 20 件だけ残す (それより古いものは、保存のたびに自動で消す)。
 -- テーブルは本人の行を「読む」ことだけ許可し、書き込みは関数経由だけにする。
 -- ============================================================
 
@@ -145,13 +145,13 @@ begin
     left(coalesce(p_improved, ''), 4000))
   returning r.id into v_id;
 
-  -- 新しい 1000 件だけ残す
+  -- 新しい 20 件だけ残す (容量の節約)
   delete from public.summary_results r
    where r.user_id = v_uid
      and r.id not in (select r2.id from public.summary_results r2
                        where r2.user_id = v_uid
                        order by r2.created_at desc, r2.id desc
-                       limit 1000);
+                       limit 20);
 
   return v_id;
 end;
@@ -165,7 +165,7 @@ grant execute on function public.save_summary_result(text, text, text, integer, 
 -- ------------------------------------------------------------
 create function public.get_my_summary_results(
   p_timezone text default 'Asia/Tokyo',   -- ほかの関数と呼び方をそろえるため (日付は保存時に決まっている)
-  p_limit    integer default 200
+  p_limit    integer default 20
 )
 returns table (
   id bigint, entry_date date, created_at timestamptz, video_id text, video_title text,
@@ -186,8 +186,21 @@ as $$
     from public.summary_results r
    where r.user_id = auth.uid()
    order by r.created_at desc, r.id desc
-   limit least(greatest(coalesce(p_limit, 200), 1), 1000);
+   limit least(greatest(coalesce(p_limit, 20), 1), 20);
 $$;
 
 revoke all on function public.get_my_summary_results(text, integer) from public, anon;
 grant execute on function public.get_my_summary_results(text, integer) to authenticated;
+
+-- ------------------------------------------------------------
+-- すでに保存されている結果も、1人あたり新しい 20 件だけにする (何度実行してもよい)
+-- ------------------------------------------------------------
+delete from public.summary_results r
+ where r.id in (
+   select id from (
+     select r2.id,
+            row_number() over (partition by r2.user_id order by r2.created_at desc, r2.id desc) as rn
+       from public.summary_results r2
+   ) ranked
+  where ranked.rn > 20
+ );

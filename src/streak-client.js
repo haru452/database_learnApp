@@ -153,7 +153,7 @@ export function createStreakApi(supabase) {
      *                   goodPoints: string, missedPoints: string, languageFeedback: string,
      *                   improvedSummary: string }>}
      */
-    async getSummaryResults(limit = 200) {
+    async getSummaryResults(limit = 20) {   // データベースには新しい 20 件だけ残っている
       const { data, error } = await supabase.rpc("get_my_summary_results", {
         p_timezone: timeZone(),
         p_limit: limit,
