@@ -51,6 +51,7 @@ revoke insert, update, delete on public.summary_results from anon, authenticated
 -- 引数や戻り値の形が変わると「同じ名前の別の関数」ができてしまうため、前の版を消してから作り直す
 drop function if exists public.save_summary_result(text, text, text, integer, integer, text, text, text, text, text, text);
 drop function if exists public.save_summary_result(text, text, text, integer, integer, integer, integer, integer, text, text, text, text, text, text);
+drop function if exists public.save_summary_result(text, text, text, integer, integer, integer, integer, integer, text, text, text, text, text, text, timestamptz);
 drop function if exists public.get_my_summary_results(text, integer);
 
 -- ------------------------------------------------------------
@@ -70,7 +71,9 @@ create function public.save_summary_result(
   p_good_points        text default '',
   p_missed_points      text default '',
   p_language_feedback  text default '',
-  p_improved           text default ''
+  p_improved           text default '',
+  -- 練習した日時 (ログイン前に受けた結果を、後から送るときに使う)。無ければ今
+  p_taken_at           timestamptz default null
 )
 returns bigint
 language plpgsql
@@ -80,14 +83,21 @@ as $$
 declare
   v_uid   uuid := auth.uid();
   v_today date;
+  v_taken timestamptz;
   v_id    bigint;
 begin
   if v_uid is null then
     raise exception 'not authenticated' using errcode = '28000';
   end if;
 
+  -- 練習した日時: 未来や、古すぎる (30日より前) 日時は受け付けず、今の日時にする
+  v_taken := coalesce(p_taken_at, now());
+  if v_taken > now() + interval '5 minutes' or v_taken < now() - interval '30 days' then
+    v_taken := now();
+  end if;
+
   begin
-    v_today := (now() at time zone p_timezone)::date;
+    v_today := (v_taken at time zone p_timezone)::date;
   exception when others then
     raise exception 'invalid timezone: %', p_timezone using errcode = '22023';
   end;
@@ -118,11 +128,11 @@ begin
   end if;
 
   insert into public.summary_results as r (
-    user_id, entry_date, video_id, video_title, time_limit_seconds,
+    user_id, entry_date, created_at, video_id, video_title, time_limit_seconds,
     score, content_score, organization_score, language_score,
     transcript, reference_summary, good_points, missed_points, language_feedback, improved_summary)
   values (
-    v_uid, v_today,
+    v_uid, v_today, v_taken,
     left(coalesce(p_video_id, ''), 32),
     left(coalesce(p_video_title, ''), 300),
     least(greatest(coalesce(p_time_limit, 60), 10), 600),
@@ -147,8 +157,8 @@ begin
 end;
 $$;
 
-revoke all on function public.save_summary_result(text, text, text, integer, integer, integer, integer, integer, text, text, text, text, text, text) from public, anon;
-grant execute on function public.save_summary_result(text, text, text, integer, integer, integer, integer, integer, text, text, text, text, text, text) to authenticated;
+revoke all on function public.save_summary_result(text, text, text, integer, integer, integer, integer, integer, text, text, text, text, text, text, timestamptz) from public, anon;
+grant execute on function public.save_summary_result(text, text, text, integer, integer, integer, integer, integer, text, text, text, text, text, text, timestamptz) to authenticated;
 
 -- ------------------------------------------------------------
 -- 一覧 (Web)
