@@ -75,6 +75,12 @@ export function createStreakApi(supabase) {
       return () => data.subscription.unsubscribe();
     },
 
+    /** パスワード再設定のメールを送る (メールのリンクは Supabase の Site URL に戻ってくる) */
+    async sendPasswordReset(email) {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+    },
+
     async signOut() {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -206,7 +212,7 @@ export function friendlyError(error) {
     email_not_confirmed: "メールアドレスの確認がまだです。届いた確認メールのリンクを開いてください。",
     user_already_exists: "このメールアドレスは、すでに登録されています。ログインしてください。",
     weak_password: "パスワードが弱すぎます。8文字以上で、推測されにくいものにしてください。",
-    over_email_send_rate_limit: "確認メールの送信回数の上限に達しました。しばらく待ってから、もう一度お試しください。",
+    over_email_send_rate_limit: "メールの送信回数の上限に達しました。しばらく待ってから、もう一度お試しください。",
     over_request_rate_limit: "操作が多すぎます。しばらく待ってから、もう一度お試しください。",
     signup_disabled: "現在、新規登録は受け付けていません。",
     validation_failed: "入力内容を確認してください。",

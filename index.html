@@ -41,6 +41,7 @@
     }
     button:hover:not(:disabled) { background: var(--accent-dark); }
     button:disabled { opacity: .55; cursor: not-allowed; }
+    .links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 16px; }
     button.link {
       width: auto; margin: 14px 0 0; padding: 0; font-weight: 400; font-size: .9rem;
       color: var(--muted); background: none; text-decoration: underline;
@@ -134,7 +135,10 @@
         <input id="password" type="password" minlength="8" autocomplete="current-password" required>
         <button id="auth-submit" type="submit">ログイン</button>
       </form>
-      <button id="auth-toggle" class="link" type="button">アカウントを作成する</button>
+      <div class="links">
+        <button id="auth-toggle" class="link" type="button">アカウントを作成する</button>
+        <button id="auth-forgot" class="link" type="button">パスワードを忘れた場合</button>
+      </div>
       <p id="auth-msg" class="msg" role="status"></p>
     </section>
 
@@ -231,9 +235,32 @@
       $("auth-submit").textContent = signup ? "登録する" : "ログイン";
       $("auth-toggle").textContent = signup ? "ログインに戻る" : "アカウントを作成する";
       $("password").autocomplete = signup ? "new-password" : "current-password";
+      $("auth-forgot").hidden = signup;
       say($("auth-msg"), "");
     }
     $("auth-toggle").addEventListener("click", () => setMode(mode === "signin" ? "signup" : "signin"));
+
+    // パスワードを忘れた場合: 入力されたメールアドレスに、再設定用のリンクを送る
+    $("auth-forgot").addEventListener("click", async () => {
+      const email = $("email").value.trim();
+      if (!email || !email.includes("@")) {
+        say($("auth-msg"), "上の欄にメールアドレスを入力してから、もう一度「パスワードを忘れた場合」を押してください。", "error");
+        $("email").focus();
+        return;
+      }
+      $("auth-forgot").disabled = true;
+      say($("auth-msg"), "送信中...");
+      try {
+        await api.sendPasswordReset(email);
+        say($("auth-msg"),
+          "登録されているメールアドレスなら、パスワード再設定のメールを送りました。メールのリンクを開いて、新しいパスワードを設定してください。",
+          "ok");
+      } catch (err) {
+        say($("auth-msg"), friendlyError(err), "error");
+      } finally {
+        $("auth-forgot").disabled = false;
+      }
+    });
 
     $("auth-form").addEventListener("submit", async (e) => {
       e.preventDefault();
