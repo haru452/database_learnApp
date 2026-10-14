@@ -61,6 +61,20 @@ export function createStreakApi(supabase) {
       return data.user;
     },
 
+    /** 新しいパスワードに変える (パスワード再設定メールのリンクから開いたとき) */
+    async updatePassword(newPassword) {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+    },
+
+    /** パスワード再設定メールのリンクから開かれたときに callback() を呼ぶ */
+    onPasswordRecovery(callback) {
+      const { data } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "PASSWORD_RECOVERY") setTimeout(callback, 0);
+      });
+      return () => data.subscription.unsubscribe();
+    },
+
     async signOut() {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -196,6 +210,8 @@ export function friendlyError(error) {
     over_request_rate_limit: "操作が多すぎます。しばらく待ってから、もう一度お試しください。",
     signup_disabled: "現在、新規登録は受け付けていません。",
     validation_failed: "入力内容を確認してください。",
+    same_password: "今と同じパスワードです。別のパスワードにしてください。",
+    otp_expired: "リンクの有効期限が切れています。アプリの「Forgot password?」から、もう一度メールを送ってください。",
   };
   if (code && byCode[code]) return byCode[code];
 

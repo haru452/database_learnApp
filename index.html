@@ -138,6 +138,19 @@
       <p id="auth-msg" class="msg" role="status"></p>
     </section>
 
+    <!-- パスワード再設定 (メールのリンクから開いたとき) -->
+    <section id="reset" hidden>
+      <h1>新しいパスワードを設定</h1>
+      <form id="reset-form" novalidate>
+        <label for="new-password">新しいパスワード (8文字以上)</label>
+        <input id="new-password" type="password" minlength="8" autocomplete="new-password" required>
+        <label for="new-password2">もう一度入力</label>
+        <input id="new-password2" type="password" minlength="8" autocomplete="new-password" required>
+        <button id="reset-submit" type="submit">パスワードを変更する</button>
+      </form>
+      <p id="reset-msg" class="msg" role="status"></p>
+    </section>
+
     <!-- ログイン後 -->
     <section id="app" hidden>
       <h1>学習ストリーク</h1>
@@ -190,7 +203,7 @@
 
     const $ = (id) => document.getElementById(id);
     const show = (name) => {
-      for (const id of ["loading", "setup", "auth", "app"]) $(id).hidden = id !== name;
+      for (const id of ["loading", "setup", "auth", "reset", "app"]) $(id).hidden = id !== name;
     };
     const say = (el, text, kind = "") => { el.textContent = text; el.className = "msg " + kind; };
 
@@ -201,6 +214,13 @@
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const api = createStreakApi(supabase);
+
+    // パスワード再設定メールのリンクから開かれたか (URL の #...type=recovery、または PASSWORD_RECOVERY の通知)
+    let recovering = /type=recovery/.test(location.hash);
+    api.onPasswordRecovery(() => {
+      recovering = true;
+      show("reset");
+    });
 
     // ---------- ログイン / 新規登録 ----------
     let mode = "signin";
@@ -242,6 +262,36 @@
         say($("auth-msg"), friendlyError(err), "error");
       } finally {
         $("auth-submit").disabled = false;
+      }
+    });
+
+    // ---------- パスワード再設定 ----------
+    $("reset-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const pw = $("new-password").value;
+      if (pw.length < 8) {
+        say($("reset-msg"), "8文字以上のパスワードを入力してください。", "error");
+        return;
+      }
+      if (pw !== $("new-password2").value) {
+        say($("reset-msg"), "2つの入力が一致しません。", "error");
+        return;
+      }
+      $("reset-submit").disabled = true;
+      say($("reset-msg"), "処理中...");
+      try {
+        await api.updatePassword(pw);
+        recovering = false;
+        history.replaceState(null, "", location.pathname + location.search);   // URL のトークンを消す
+        $("new-password").value = "";
+        $("new-password2").value = "";
+        show("app");
+        loadStreak();
+        say($("app-msg"), "パスワードを変更しました。アプリでも新しいパスワードでログインできます。", "ok");
+      } catch (err) {
+        say($("reset-msg"), friendlyError(err), "error");
+      } finally {
+        $("reset-submit").disabled = false;
       }
     });
 
@@ -731,7 +781,10 @@
 
     // ---------- ログイン状態に合わせて画面を切り替える ----------
     api.onAuthChange((user) => {
-      if (user) {
+      if (user && recovering) {
+        $("who").textContent = user.email || "";
+        show("reset");
+      } else if (user) {
         $("who").textContent = user.email || "";
         show("app");
         loadStreak();
