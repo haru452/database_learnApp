@@ -1,6 +1,7 @@
 -- ============================================================
 -- 追加: 要約練習 (Versant 対策) の採点結果
 -- Supabase の SQL Editor に貼り付けて Run (何度実行してもよい。前の版を実行済みでも、そのまま上書きできる)。
+-- ※ schema.sql を先に実行しておくこと (連続記録とカレンダー用のテーブルを使う)。
 --
 --   save_summary_result      … アプリ: 採点結果を1件保存する
 --   get_my_summary_results   … Web  : 自分の採点結果を新しい順に返す (点数の推移・内訳のグラフ用)
@@ -97,7 +98,8 @@ begin
   end if;
 
   begin
-    v_today := (v_taken at time zone p_timezone)::date;
+    -- 夜中の 3:00 までは前の日として数える (日記の連続記録 public.app_today と同じ区切り)
+    v_today := ((v_taken at time zone p_timezone) - interval '3 hours')::date;
   exception when others then
     raise exception 'invalid timezone: %', p_timezone using errcode = '22023';
   end;
@@ -204,3 +206,61 @@ delete from public.summary_results r
    ) ranked
   where ranked.rn > 20
  );
+
+-- ------------------------------------------------------------
+-- 要約練習をやった日も「やった日」として記録し、連続記録 (streaks) に数える
+--   ・カレンダー用に activity_days へ記録する (schema.sql で作るテーブル)
+--   ・その日が「最後に学習した日」の次の日なら +1、空いていれば 1 からやり直し、同じ日なら何もしない
+--   ・後から送られた古い結果 (最後に学習した日より前) は、連続記録には影響しない
+-- ------------------------------------------------------------
+create or replace function public.summary_counts_as_study()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row  public.streaks%rowtype;
+  v_new  integer;
+begin
+  insert into public.activity_days (user_id, day, kind)
+  values (new.user_id, new.entry_date, 'summary')
+  on conflict do nothing;
+
+  -- streaks のトリガーに「1日分だけの更新」だと伝える (連続期間をまとめて日記扱いにしない)
+  perform set_config('app.streak_source', 'summary', true);
+
+  insert into public.streaks (user_id) values (new.user_id)
+  on conflict (user_id) do nothing;
+  select * into v_row from public.streaks s where s.user_id = new.user_id for update;
+
+  if v_row.last_study_date is null or new.entry_date > v_row.last_study_date then
+    if v_row.last_study_date = new.entry_date - 1 then
+      v_new := v_row.current_streak + 1;
+    else
+      v_new := 1;
+    end if;
+    update public.streaks s
+       set current_streak = v_new,
+           last_study_date = new.entry_date,
+           best_streak = greatest(s.best_streak, s.current_streak, v_new),
+           updated_at = now()
+     where s.user_id = new.user_id;
+  end if;
+
+  perform set_config('app.streak_source', '', true);
+  return new;
+end;
+$$;
+revoke all on function public.summary_counts_as_study() from public, anon, authenticated;
+
+drop trigger if exists summary_counts_as_study on public.summary_results;
+create trigger summary_counts_as_study
+  after insert on public.summary_results
+  for each row execute function public.summary_counts_as_study();
+
+-- すでに保存されている要約練習の日も、カレンダーに取り込む (連続記録は変えない)
+insert into public.activity_days (user_id, day, kind)
+select distinct r.user_id, r.entry_date, 'summary'
+from public.summary_results r
+on conflict do nothing;
