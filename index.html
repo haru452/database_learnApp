@@ -151,6 +151,48 @@
       content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%;
       margin-right: 6px; vertical-align: -1px; background: var(--c);
     }
+    /* ---------- 上のバーとハンバーガーメニュー ---------- */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      margin: -8px 0 18px; padding-bottom: 12px; border-bottom: 1px solid var(--line);
+    }
+    .topbar h1 { margin: 0; }
+    .menu-btn {
+      width: 42px; height: 42px; margin: 0; padding: 0; flex: none;
+      display: grid; place-content: center; gap: 5px;
+      background: transparent; border: 1px solid var(--line); border-radius: 10px;
+    }
+    .menu-btn:hover:not(:disabled) { background: var(--line); }
+    .menu-btn span { display: block; width: 18px; height: 2px; border-radius: 2px; background: var(--text); }
+    .menu-backdrop {
+      position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, .35);
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .menu {
+      position: fixed; z-index: 21; top: 0; right: 0; bottom: 0; width: min(280px, 82vw);
+      display: flex; flex-direction: column; padding: 20px 14px;
+      background: var(--card); border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0, 0, 0, .18);
+      transform: translateX(100%); visibility: hidden; transition: transform .22s ease, visibility .22s;
+    }
+    body.menu-open .menu { transform: none; visibility: visible; }
+    body.menu-open .menu-backdrop { opacity: 1; pointer-events: auto; }
+    .menu-head { display: flex; align-items: center; justify-content: space-between; margin: 0 4px 6px; }
+    .menu-head strong { font-size: 1rem; }
+    .menu-close {
+      width: 36px; height: 36px; margin: 0; padding: 0; font-size: 1.4rem; line-height: 1;
+      color: var(--muted); background: transparent; border: 0; border-radius: 8px;
+    }
+    .menu-close:hover:not(:disabled) { background: var(--line); color: var(--text); }
+    .menu .who { margin: 0 4px 14px; }
+    .menu-item {
+      width: 100%; margin: 2px 0; padding: 12px 14px; text-align: left; font-weight: 600; font-size: .95rem;
+      color: var(--text); background: transparent; border-radius: 10px;
+    }
+    .menu-item:hover:not(:disabled) { background: var(--line); }
+    .menu-item[aria-current="page"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+    .menu-sep { height: 1px; background: var(--line); margin: 12px 4px; }
+    .menu-item.logout { color: var(--muted); font-weight: 400; }
+    .page > h2:first-child { margin-top: 0; }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -196,8 +238,29 @@
 
     <!-- ログイン後 -->
     <section id="app" hidden>
-      <h1>学習ストリーク</h1>
-      <p id="who" class="who"></p>
+      <header class="topbar">
+        <h1 id="page-title">学習ストリーク</h1>
+        <button id="menu-btn" class="menu-btn" type="button" aria-label="メニューを開く"
+                aria-expanded="false" aria-controls="menu">
+          <span></span><span></span><span></span>
+        </button>
+      </header>
+
+      <div id="menu-backdrop" class="menu-backdrop"></div>
+      <nav id="menu" class="menu" aria-label="メニュー">
+        <div class="menu-head">
+          <strong>メニュー</strong>
+          <button id="menu-close" class="menu-close" type="button" aria-label="メニューを閉じる">&times;</button>
+        </div>
+        <p id="who" class="who"></p>
+        <button class="menu-item" type="button" data-page="home">連続記録とカレンダー</button>
+        <button class="menu-item" type="button" data-page="diary">日記の履歴</button>
+        <button class="menu-item" type="button" data-page="summary">要約練習のスコア</button>
+        <div class="menu-sep"></div>
+        <button id="logout" class="menu-item logout" type="button">ログアウト</button>
+      </nav>
+
+      <div class="page" data-page="home">
       <div class="streak">
         <div id="streak-num" class="num">0</div>
         <div class="unit">日連続</div>
@@ -226,13 +289,15 @@
         </div>
         <p id="cal-msg" class="msg" role="status"></p>
       </section>
+      </div>
 
-      <h2>日記の履歴</h2>
+      <div class="page" data-page="diary" hidden>
       <p class="hint">アプリで添削した日記の、直近7日分です。</p>
       <div id="diary-list"></div>
       <p id="diary-msg" class="msg" role="status"></p>
+      </div>
 
-      <h2>要約練習のスコア</h2>
+      <div class="page" data-page="summary" hidden>
       <p class="hint">アプリの「Summary」で、動画を要約したときの点数です（100点満点）。</p>
       <div id="sum-stats" class="stats" hidden></div>
       <figure id="sum-chart" class="chart" hidden>
@@ -254,8 +319,7 @@
       <div id="sum-list"></div>
       <button id="sum-more" class="link" type="button" hidden>もっと見る</button>
       <p id="sum-msg" class="msg" role="status"></p>
-
-      <button id="logout" class="link" type="button">ログアウト</button>
+      </div>
     </section>
   </main>
 
@@ -941,7 +1005,51 @@
       }, 150);
     });
 
+    // ---------- ハンバーガーメニューとページの切り替え (URL の #diary / #summary で直接開ける) ----------
+    const PAGES = { home: "学習ストリーク", diary: "日記の履歴", summary: "要約練習のスコア" };
+
+    function setMenu(open) {
+      document.body.classList.toggle("menu-open", open);
+      $("menu-btn").setAttribute("aria-expanded", String(open));
+      if (open) $("menu-close").focus();
+    }
+    $("menu-btn").addEventListener("click", () => setMenu(true));
+    $("menu-close").addEventListener("click", () => { setMenu(false); $("menu-btn").focus(); });
+    $("menu-backdrop").addEventListener("click", () => setMenu(false));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && document.body.classList.contains("menu-open")) { setMenu(false); $("menu-btn").focus(); }
+    });
+
+    function showPage(name) {
+      if (!PAGES[name]) name = "home";
+      for (const page of document.querySelectorAll(".page")) page.hidden = page.dataset.page !== name;
+      for (const item of document.querySelectorAll(".menu-item[data-page]")) {
+        if (item.dataset.page === name) item.setAttribute("aria-current", "page");
+        else item.removeAttribute("aria-current");
+      }
+      $("page-title").textContent = PAGES[name];
+      // 隠れているあいだは幅が測れないので、グラフは表示したときに描き直す
+      if (name === "summary" && sumResults.length) {
+        renderSummaryChart(sumResults);
+        renderSummaryParts(sumResults);
+      }
+    }
+    for (const item of document.querySelectorAll(".menu-item[data-page]")) {
+      item.addEventListener("click", () => {
+        const name = item.dataset.page;
+        history.replaceState(null, "", name === "home" ? location.pathname + location.search : "#" + name);
+        showPage(name);
+        setMenu(false);
+        window.scrollTo(0, 0);
+      });
+    }
+    // パスワード再設定のリンク (#...type=recovery) のときは、ページの切り替えに使わない
+    const pageFromHash = () => (/type=recovery/.test(location.hash) ? "home" : location.hash.slice(1));
+    showPage(pageFromHash());
+    window.addEventListener("hashchange", () => showPage(pageFromHash()));
+
     $("logout").addEventListener("click", async () => {
+      setMenu(false);
       try { await api.signOut(); } catch (err) { say($("app-msg"), friendlyError(err), "error"); }
     });
 
