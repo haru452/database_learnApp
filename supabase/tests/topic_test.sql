@@ -153,6 +153,15 @@ do $$ begin
   raise exception 'FAILED: direct insert allowed';
 exception when insufficient_privilege then null; end $$;
 
+-- 12) アプリは RPC の本文に必ず p_timezone を付ける (PostgREST は引数の名前で関数を選ぶ)
+select pg_temp.check((select count(*) from public.get_my_weak_points(p_timezone => 'Asia/Tokyo')) >= 0, 'weak points accepts p_timezone');
+select public.set_topic_read_aloud(p_timezone => 'Asia/Tokyo', p_id => :tid, p_accuracy => 77);
+select pg_temp.check((select read_aloud_accuracy from public.get_my_topic_results(1)) = 77, 'read aloud accepts p_timezone');
+
+-- 13) 90 日の表示では、前の期間のデータが残っていないので previous_count は null
+select pg_temp.check((select bool_and(previous_count is null) from public.get_my_mistake_stats(90)), '90 days: previous_count is null');
+select pg_temp.check((select bool_and(previous_count is not null) from public.get_my_mistake_stats(30)), '30 days: previous_count present');
+
 -- 11) もう一度実行しても壊れない
 reset role;
 select count(*) as before_r from public.topic_results \gset
@@ -162,5 +171,14 @@ select count(*) as before_m from public.mistakes \gset
 \i ../topic.sql
 select pg_temp.check((select count(*) from public.topic_results) = :before_r, 'rerun keeps results');
 select pg_temp.check((select count(*) from public.mistakes) = :before_m, 'rerun keeps mistakes');
+
+-- 14) 古い schema.sql (kind に topic が無い制約) のまま topic.sql だけ実行しても、お題を保存できる
+alter table public.activity_days drop constraint activity_days_kind_check;
+alter table public.activity_days add constraint activity_days_kind_check check (kind in ('diary', 'summary')) not valid;
+\i ../topic.sql
+select pg_temp.as_user(:'A');
+set role authenticated;
+select public.save_topic_result('Asia/Tokyo','daily','after old schema',45, 70,30,20,20,'','','','','','',null,'[]'::jsonb,null);
+reset role;
 
 \echo ALL TOPIC TESTS PASSED

@@ -54,6 +54,11 @@ create table if not exists public.mistakes (
 );
 create index if not exists mistakes_user_date_idx on public.mistakes (user_id, entry_date desc);
 
+-- 「やった日」の種類に topic を足す (schema.sql と同じ。古い schema.sql のままでも、お題を保存できるように)
+alter table public.activity_days drop constraint if exists activity_days_kind_check;
+alter table public.activity_days add constraint activity_days_kind_check
+  check (kind in ('diary', 'summary', 'topic'));
+
 alter table public.topic_results enable row level security;
 alter table public.mistakes enable row level security;
 
@@ -198,9 +203,11 @@ create trigger topic_counts_as_study
 drop function if exists public.save_topic_result(text, text, text, integer, integer, integer, integer, integer,
   text, text, text, text, text, text, integer, jsonb, timestamptz);
 drop function if exists public.set_topic_read_aloud(bigint, integer);
+drop function if exists public.set_topic_read_aloud(bigint, integer, text);
 drop function if exists public.save_mistakes(text, text, jsonb, timestamptz);
 drop function if exists public.get_my_topic_results(integer);
 drop function if exists public.get_my_weak_points();
+drop function if exists public.get_my_weak_points(text);
 drop function if exists public.get_my_mistake_stats(integer);
 
 create function public.save_topic_result(
@@ -292,7 +299,9 @@ begin
 end;
 $$;
 
-create function public.set_topic_read_aloud(p_id bigint, p_accuracy integer)
+-- p_timezone は使わないが、アプリは RPC に必ず付けて送るので受け取れるようにしておく
+-- (PostgREST は送られた引数の名前で関数を選ぶため、無いと「関数が見つからない」になる)
+create function public.set_topic_read_aloud(p_id bigint, p_accuracy integer, p_timezone text default 'Asia/Tokyo')
 returns void
 language plpgsql
 security definer
@@ -335,14 +344,14 @@ end;
 $$;
 
 -- 直近 30 日で多いミスの種類 (上位 3)。previous_count はその前の 30 日の回数
-create function public.get_my_weak_points()
+create function public.get_my_weak_points(p_timezone text default 'Asia/Tokyo')
 returns table (type text, count integer, previous_count integer)
 language sql
 stable
 security invoker
 set search_path = public
 as $$
-  with t as (select public.app_today('Asia/Tokyo') as today)
+  with t as (select public.app_today(coalesce(p_timezone, 'Asia/Tokyo')) as today)
   select m.type,
          count(*) filter (where m.entry_date > t.today - 30)::integer as count,
          count(*) filter (where m.entry_date <= t.today - 30 and m.entry_date > t.today - 60)::integer as previous_count
@@ -378,7 +387,8 @@ as $$
    limit least(greatest(coalesce(p_limit, 20), 1), 20);
 $$;
 
--- 期間内 (p_days 日。1〜90) のミスの種類ごとの回数、その前の同じ長さの期間の回数、例 (新しい順に最大 5)
+-- 期間内 (p_days 日。1〜90) のミスの種類ごとの回数、その前の同じ長さの期間の回数、例 (新しい順に最大 5)。
+-- ミスは 90 日分しか残さないので、前の期間が 90 日より前にかかるとき (p_days > 45) は previous_count を null にする
 create function public.get_my_mistake_stats(p_days integer default 30)
 returns table (type text, count integer, previous_count integer, examples jsonb)
 language sql
@@ -396,8 +406,10 @@ as $$
   )
   select x.type,
          count(*) filter (where x.entry_date > x.today - x.days)::integer as count,
-         count(*) filter (where x.entry_date <= x.today - x.days
-                            and x.entry_date > x.today - 2 * x.days)::integer as previous_count,
+         case when x.days * 2 > 90 then null
+              else count(*) filter (where x.entry_date <= x.today - x.days
+                                      and x.entry_date > x.today - 2 * x.days)::integer
+         end as previous_count,
          coalesce((
            select jsonb_agg(jsonb_build_object('wrong', e.wrong, 'fixed', e.fixed,
                                                'source', e.source, 'date', e.entry_date)
@@ -407,23 +419,24 @@ as $$
                     order by e2.created_at desc, e2.id desc limit 5) e
          ), '[]'::jsonb) as examples
     from mine x
-   group by x.type
+   group by x.type, x.today, x.days
   having count(*) filter (where x.entry_date > x.today - x.days) > 0
-      or count(*) filter (where x.entry_date <= x.today - x.days and x.entry_date > x.today - 2 * x.days) > 0
-   order by 2 desc, 3 desc, x.type;
+      or (x.days * 2 <= 90
+          and count(*) filter (where x.entry_date <= x.today - x.days and x.entry_date > x.today - 2 * x.days) > 0)
+   order by 2 desc, 3 desc nulls last, x.type;
 $$;
 
 revoke all on function public.save_topic_result(text, text, text, integer, integer, integer, integer, integer,
   text, text, text, text, text, text, integer, jsonb, timestamptz) from public, anon;
-revoke all on function public.set_topic_read_aloud(bigint, integer) from public, anon;
+revoke all on function public.set_topic_read_aloud(bigint, integer, text) from public, anon;
 revoke all on function public.save_mistakes(text, text, jsonb, timestamptz) from public, anon;
 revoke all on function public.get_my_topic_results(integer) from public, anon;
-revoke all on function public.get_my_weak_points() from public, anon;
+revoke all on function public.get_my_weak_points(text) from public, anon;
 revoke all on function public.get_my_mistake_stats(integer) from public, anon;
 grant execute on function public.save_topic_result(text, text, text, integer, integer, integer, integer, integer,
   text, text, text, text, text, text, integer, jsonb, timestamptz) to authenticated;
-grant execute on function public.set_topic_read_aloud(bigint, integer) to authenticated;
+grant execute on function public.set_topic_read_aloud(bigint, integer, text) to authenticated;
 grant execute on function public.save_mistakes(text, text, jsonb, timestamptz) to authenticated;
 grant execute on function public.get_my_topic_results(integer) to authenticated;
-grant execute on function public.get_my_weak_points() to authenticated;
+grant execute on function public.get_my_weak_points(text) to authenticated;
 grant execute on function public.get_my_mistake_stats(integer) to authenticated;

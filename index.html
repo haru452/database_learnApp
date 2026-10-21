@@ -1162,7 +1162,7 @@
     function renderMistakes(stats) {
       const list = $("mis-list");
       list.replaceChildren();
-      const rows = stats.slice().sort((a, b) => b.count - a.count || b.previousCount - a.previousCount);
+      const rows = stats.slice().sort((a, b) => b.count - a.count || (b.previousCount ?? 0) - (a.previousCount ?? 0));
       if (rows.length === 0) {
         list.append(el("p", "empty", "この期間のミスはまだありません。アプリで添削すると、ここに種類ごとの回数が出ます。"));
         return;
@@ -1176,7 +1176,7 @@
         fill.style.width = `${(r.count / max) * 100}%`;
         bar.append(fill);
         const cnt = el("span", "cnt", `${r.count}回`);
-        if (r.count !== r.previousCount) {
+        if (r.previousCount != null && r.count !== r.previousCount) {   // 90 日表示では前の期間のデータが無いので null
           const up = r.count > r.previousCount;
           const trend = el("span", up ? "trend up" : "trend down", up ? "↑" : "↓");
           trend.title = `前の${misDays}日: ${r.previousCount}回`;

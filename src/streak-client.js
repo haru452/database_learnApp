@@ -243,8 +243,8 @@ export function createStreakApi(supabase) {
     // ---------------- よくあるミス ----------------
 
     /**
-     * 直近 days 日のミスの種類ごとの回数 (多い順)。previousCount はその前の同じ日数の回数。
-     * @returns {Array<{ type: string, count: number, previousCount: number,
+     * 直近 days 日のミスの種類ごとの回数 (多い順)。previousCount はその前の同じ日数の回数 (90 日のときは前のデータが無いので null)。
+     * @returns {Array<{ type: string, count: number, previousCount: number|null,
      *                   examples: Array<{ wrong: string, fixed: string, source: string, date: string }> }>}
      */
     async getMistakeStats(days) {

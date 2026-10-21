@@ -102,7 +102,7 @@ export function createClient() {
       if (name === "get_my_streak") return { data: [{ streak: 4, last_date: DATA.today, studied_today: true, best_streak: 9 }], error: null };
       if (name === "get_my_activity_days") return { data: DATA.activity, error: null };
       if (name === "get_my_topic_results") return { data: DATA.topics, error: null };
-      if (name === "get_my_mistake_stats") return { data: DATA.mistakes, error: null };
+      if (name === "get_my_mistake_stats") return { data: args.p_days === 90 ? DATA.mistakes.map((m) => ({ ...m, previous_count: null })) : DATA.mistakes, error: null };
       if (name === "get_my_summary_results") return { data: DATA.summary, error: null };
       return { data: [], error: null };
     },
@@ -197,6 +197,9 @@ async def run(browser, scheme):
     for days in (7, 30, 90):
         await page.click(f"#mis-period button[data-days='{days}']")
         await page.wait_for_timeout(150)
+    await page.wait_for_timeout(200)
+    check(await page.locator("#mis-list .mis-row").count() == 6, f"{scheme}: 90 days still lists rows")
+    check(await page.locator("#mis-list .trend").count() == 0, f"{scheme}: 90 days hides trend arrows (no previous data)")
     calls = [c[1]["p_days"] for c in await page.evaluate("window.__calls") if c[0] == "get_my_mistake_stats"]
     check(calls[-3:] == [7, 30, 90], f"{scheme}: period buttons call p_days {calls}")
     await page.screenshot(path=f"/tmp/web_mistakes_{scheme}.png", full_page=True)
