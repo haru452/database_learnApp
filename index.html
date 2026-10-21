@@ -138,6 +138,8 @@
     .cal-day .flame { position: absolute; z-index: 1; width: 40px; height: 46px; top: 50%; left: 50%; transform: translate(-50%, -52%); }
     .cal-day.on .n { color: #1d2733; transform: translateY(3px); }
     .cal-day.diary   { --flame: #ff922b; }
+    .cal-day.topic   { --flame: #40c057; }
+    .cal-day.gold    { --flame: #fcc419; }
     .cal-day.summary { --flame: #4dabf7; }
     .cal-day.both    { --flame: #9775fa; }
     .cal-day .flame path { fill: var(--flame); }
@@ -153,7 +155,7 @@
     }
     /* ---------- 上のバーとハンバーガーメニュー ---------- */
     .topbar {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      display: flex; align-items: center; justify-content: flex-start; gap: 12px;
       margin: -8px 0 18px; padding-bottom: 12px; border-bottom: 1px solid var(--line);
     }
     .topbar h1 { margin: 0; }
@@ -169,10 +171,10 @@
       opacity: 0; pointer-events: none; transition: opacity .2s;
     }
     .menu {
-      position: fixed; z-index: 21; top: 0; right: 0; bottom: 0; width: min(280px, 82vw);
+      position: fixed; z-index: 21; top: 0; left: 0; bottom: 0; width: min(280px, 82vw);
       display: flex; flex-direction: column; padding: 20px 14px;
-      background: var(--card); border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0, 0, 0, .18);
-      transform: translateX(100%); visibility: hidden; transition: transform .22s ease, visibility .22s;
+      background: var(--card); border-right: 1px solid var(--line); box-shadow: 8px 0 24px rgba(0, 0, 0, .18);
+      transform: translateX(-100%); visibility: hidden; transition: transform .22s ease, visibility .22s;
     }
     body.menu-open .menu { transform: none; visibility: visible; }
     body.menu-open .menu-backdrop { opacity: 1; pointer-events: auto; }
@@ -193,6 +195,32 @@
     .menu-sep { height: 1px; background: var(--line); margin: 12px 4px; }
     .menu-item.logout { color: var(--muted); font-weight: 400; }
     .page > h2:first-child { margin-top: 0; }
+    /* ---------- よくあるミス ---------- */
+    .mis-period { display: flex; gap: 8px; margin: 4px 0 14px; }
+    .mis-period button {
+      width: auto; margin: 0; padding: 7px 14px; font-size: .85rem; font-weight: 600;
+      color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 999px;
+    }
+    .mis-period button:hover:not(:disabled) { background: var(--line); }
+    .mis-period button[aria-pressed="true"] { color: #fff; background: var(--accent); border-color: var(--accent); }
+    .mis-row { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 0 0 8px; }
+    .mis-row summary {
+      list-style: none; cursor: pointer; display: grid; grid-template-columns: 8.5em 1fr auto;
+      align-items: center; gap: 10px;
+    }
+    .mis-row summary::-webkit-details-marker { display: none; }
+    .mis-row .name { font-size: .85rem; font-weight: 600; }
+    .mis-row .bar { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+    .mis-row .bar span { display: block; height: 100%; border-radius: 5px; background: var(--muted); }
+    .mis-row.top .bar span { background: var(--accent); }
+    .mis-row .cnt { font-size: .85rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .mis-row .trend { margin-left: 4px; font-weight: 700; }
+    .mis-row .trend.up { color: var(--error); }
+    .mis-row .trend.down { color: var(--ok); }
+    .mis-ex { margin: 10px 0 0; padding: 0; list-style: none; font-size: .85rem; }
+    .mis-ex li { padding: 6px 0; border-top: 1px dashed var(--line); word-break: break-word; }
+    .mis-ex .wrong { text-decoration: line-through; color: var(--muted); }
+    .mis-ex .src { font-size: .72rem; color: var(--muted); margin-left: 6px; }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -239,11 +267,11 @@
     <!-- ログイン後 -->
     <section id="app" hidden>
       <header class="topbar">
-        <h1 id="page-title">学習ストリーク</h1>
         <button id="menu-btn" class="menu-btn" type="button" aria-label="メニューを開く"
                 aria-expanded="false" aria-controls="menu">
           <span></span><span></span><span></span>
         </button>
+        <h1 id="page-title">学習ストリーク</h1>
       </header>
 
       <div id="menu-backdrop" class="menu-backdrop"></div>
@@ -256,6 +284,8 @@
         <button class="menu-item" type="button" data-page="home">連続記録とカレンダー</button>
         <button class="menu-item" type="button" data-page="diary">日記の履歴</button>
         <button class="menu-item" type="button" data-page="summary">要約練習のスコア</button>
+        <button class="menu-item" type="button" data-page="topic">お題スピーキング</button>
+        <button class="menu-item" type="button" data-page="mistakes">よくあるミス</button>
         <div class="menu-sep"></div>
         <button id="logout" class="menu-item logout" type="button">ログアウト</button>
       </nav>
@@ -285,7 +315,9 @@
         <div class="cal-legend">
           <span style="--c:#ff922b">日記</span>
           <span style="--c:#4dabf7">要約練習</span>
-          <span style="--c:#9775fa">両方</span>
+          <span style="--c:#40c057">お題</span>
+          <span style="--c:#9775fa">2種類</span>
+          <span style="--c:#fcc419">3つ全部</span>
         </div>
         <p id="cal-msg" class="msg" role="status"></p>
       </section>
@@ -319,6 +351,40 @@
       <div id="sum-list"></div>
       <button id="sum-more" class="link" type="button" hidden>もっと見る</button>
       <p id="sum-msg" class="msg" role="status"></p>
+      </div>
+
+      <div class="page" data-page="topic" hidden>
+      <p class="hint">アプリの「Topic」で、お題について話したときの点数です（100点満点）。</p>
+      <div id="top-stats" class="stats" hidden></div>
+      <figure id="top-chart" class="chart" hidden>
+        <svg id="top-svg" role="img" aria-labelledby="top-chart-desc"></svg>
+        <div id="top-tip" class="tip" hidden></div>
+        <figcaption id="top-chart-desc" class="hint"></figcaption>
+      </figure>
+      <section id="top-parts" hidden>
+        <h3>項目ごとの点数</h3>
+        <p class="hint">内容 40点 + 構成 30点 + 文法・語彙 30点 = 100点</p>
+        <div id="top-meters" class="meters"></div>
+        <figure id="top-stack" class="chart">
+          <div id="top-legend" class="legend"></div>
+          <svg id="top-stack-svg" role="img" aria-labelledby="top-stack-desc"></svg>
+          <div id="top-stack-tip" class="tip" hidden></div>
+          <figcaption id="top-stack-desc" class="hint"></figcaption>
+        </figure>
+      </section>
+      <div id="top-list"></div>
+      <p id="top-msg" class="msg" role="status"></p>
+      </div>
+
+      <div class="page" data-page="mistakes" hidden>
+      <p class="hint">日記・要約・お題の添削で見つかったミスを、種類ごとに数えています（Gemini で添削したものだけ）。</p>
+      <div id="mis-period" class="mis-period" role="group" aria-label="期間">
+        <button type="button" data-days="7" aria-pressed="false">7日</button>
+        <button type="button" data-days="30" aria-pressed="true">30日</button>
+        <button type="button" data-days="90" aria-pressed="false">90日</button>
+      </div>
+      <div id="mis-list"></div>
+      <p id="mis-msg" class="msg" role="status"></p>
       </div>
     </section>
   </main>
@@ -468,6 +534,8 @@
       loadCalendar();
       loadDiary();
       loadSummary();
+      loadTopic();
+      loadMistakes();
     }
 
     // ---------- やった日カレンダー (日記 = オレンジ / 要約練習 = 青 / 両方 = 紫) ----------
@@ -525,8 +593,11 @@
         if (iso === todayIso) cell.classList.add("today");
 
         let label = `${d.getMonth() + 1}月${d.getDate()}日`;
-        if (a && (a.diary || a.summary)) {
-          const kind = a.diary && a.summary ? "both" : a.diary ? "diary" : "summary";
+        const kinds = a ? [a.diary && "日記", a.summary && "要約練習", a.topic && "お題"].filter(Boolean) : [];
+        if (kinds.length > 0) {
+          // 1種類 = その色 / 2種類 = 紫 / 3種類全部 = 金
+          const kind = kinds.length === 3 ? "gold" : kinds.length === 2 ? "both"
+            : a.diary ? "diary" : a.summary ? "summary" : "topic";
           cell.classList.add("on", kind);
           // 同じ週の中で、前後の日もやっていれば帯でつなぐ
           const prev = byDate.get(isoDate(addDays(d, -1)));
@@ -534,7 +605,7 @@
           if (d.getDay() === 0 || !prev) cell.classList.add("first");
           if (d.getDay() === 6 || !next) cell.classList.add("last");
           cell.insertAdjacentHTML("beforeend", FLAME_SVG);
-          label += kind === "both" ? " 日記と要約練習" : kind === "diary" ? " 日記" : " 要約練習";
+          label += " " + kinds.join("・");
         }
         cell.setAttribute("aria-label", label);
         cell.append(el("span", "n", String(d.getDate())));
@@ -637,8 +708,8 @@
       return isNaN(d) ? "" : d.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" });
     }
 
-    function renderSummaryStats(results) {
-      const box = $("sum-stats");
+    function renderSummaryStats(results, P = "sum") {
+      const box = $(P + "-stats");
       box.replaceChildren();
       const scores = results.map((r) => r.score);
       const recent = scores.slice(-5);
@@ -657,12 +728,12 @@
     }
 
     // 1回ごとの点数を、古い順に左から並べた折れ線グラフ
-    function renderSummaryChart(results) {
-      const svg = $("sum-svg");
-      const tip = $("sum-tip");
+    function renderSummaryChart(results, P = "sum") {
+      const svg = $(P + "-svg");
+      const tip = $(P + "-tip");
       svg.replaceChildren();
       tip.hidden = true;
-      $("sum-chart").hidden = false;
+      $(P + "-chart").hidden = false;
 
       const W = svg.clientWidth || 470;
       const H = 200;
@@ -731,7 +802,7 @@
         tip.replaceChildren(
           el("div", "score", `${r.score}点`),
           el("div", "sub", `${formatDateTime(r.createdAt)}  ·  ${i + 1}回目`),
-          el("div", "", r.videoTitle || "(タイトルなし)"));
+          el("div", "", r.videoTitle || r.topic || "(タイトルなし)"));
         tip.hidden = false;
         const scale = box.width / W;
         const left = cx * scale + 12 + tip.offsetWidth > box.width ? cx * scale - 12 - tip.offsetWidth : cx * scale + 12;
@@ -749,7 +820,7 @@
       svg.onpointerleave = hide;
 
       const lastScore = results[n - 1].score;
-      $("sum-chart-desc").textContent =
+      $(P + "-chart-desc").textContent =
         `${n}回分の点数の推移（古い順）。最新は${lastScore}点、最高は${Math.max(...results.map((r) => r.score))}点。`;
     }
 
@@ -759,10 +830,16 @@
       { key: "organizationScore", name: "構成", max: 25, cls: "seg-2", color: "var(--part-2)" },
       { key: "languageScore", name: "文法・語彙", max: 25, cls: "seg-3", color: "var(--part-3)" },
     ];
+    // お題スピーキングの配分 (内容 40 + 構成 30 + 文法・語彙 30)
+    const TOPIC_PARTS = [
+      { key: "contentScore", name: "内容", max: 40, cls: "seg-1", color: "var(--part-1)" },
+      { key: "organizationScore", name: "構成", max: 30, cls: "seg-2", color: "var(--part-2)" },
+      { key: "languageScore", name: "文法・語彙", max: 30, cls: "seg-3", color: "var(--part-3)" },
+    ];
     const STACK_COUNT = 20;   // 内訳のグラフに出す回数 (直近)
     const AVERAGE_COUNT = 5;  // 平均を出す回数 (直近)
 
-    const hasParts = (r) => PARTS.every((p) => Number.isFinite(r[p.key]));
+    const hasParts = (r, parts = PARTS) => parts.every((p) => Number.isFinite(r[p.key]));
 
     function swatch(color) {
       const s = el("span", "swatch");
@@ -770,16 +847,16 @@
       return s;
     }
 
-    function partsText(r) {
-      return PARTS.map((p) => `${p.name} ${r[p.key]}/${p.max}`).join("  ·  ");
+    function partsText(r, parts = PARTS) {
+      return parts.map((p) => `${p.name} ${r[p.key]}/${p.max}`).join("  ·  ");
     }
 
     // 直近の平均を、満点に対する割合のバーで表示する (どの項目が弱いかが分かる)
-    function renderPartMeters(withParts) {
-      const box = $("sum-meters");
+    function renderPartMeters(withParts, P = "sum", parts = PARTS) {
+      const box = $(P + "-meters");
       box.replaceChildren();
       const recent = withParts.slice(-AVERAGE_COUNT);
-      for (const p of PARTS) {
+      for (const p of parts) {
         const avg = recent.reduce((a, r) => a + r[p.key], 0) / recent.length;
         const row = el("div", "meter");
         const name = el("div", "name");
@@ -796,16 +873,16 @@
     }
 
     // 1回ごとに、3項目を積み上げた棒 (棒の高さ = 合計点)
-    function renderPartStack(withParts) {
+    function renderPartStack(withParts, P = "sum", parts = PARTS) {
       const results = withParts.slice(-STACK_COUNT);
-      const svg = $("sum-stack-svg");
-      const tip = $("sum-stack-tip");
+      const svg = $(P + "-stack-svg");
+      const tip = $(P + "-stack-tip");
       svg.replaceChildren();
       tip.hidden = true;
 
-      const legend = $("sum-legend");
+      const legend = $(P + "-legend");
       legend.replaceChildren();
-      for (const p of PARTS) {
+      for (const p of parts) {
         const item = el("span");
         item.append(swatch(p.color), document.createTextNode(`${p.name}（${p.max}点）`));
         legend.append(item);
@@ -846,7 +923,7 @@
       results.forEach((r, i) => {
         const x0 = cx(i) - barW / 2;
         let base = 0;
-        const segs = PARTS.map((p) => ({ p, from: base, to: (base += r[p.key]) })).filter((s) => s.to > s.from);
+        const segs = parts.map((p) => ({ p, from: base, to: (base += r[p.key]) })).filter((s) => s.to > s.from);
         segs.forEach((s, k) => {
           const top = y(s.to);
           const bottom = y(s.from) - (k > 0 ? GAP : 0);
@@ -879,7 +956,7 @@
         tip.replaceChildren(
           el("div", "score", `合計 ${r.score}点`),
           el("div", "sub", formatDateTime(r.createdAt)));
-        for (const p of PARTS.slice().reverse()) {   // 棒と同じ並び (上から)
+        for (const p of parts.slice().reverse()) {   // 棒と同じ並び (上から)
           const row = el("div", "row");
           row.append(swatch(p.color), el("span", "", `${p.name} ${r[p.key]} / ${p.max}`));
           tip.append(row);
@@ -889,7 +966,7 @@
         const xs = cx(i) * scale;
         const left = xs + 16 + tip.offsetWidth > box.width ? xs - 16 - tip.offsetWidth : xs + 16;
         tip.style.left = `${Math.max(0, left)}px`;
-        tip.style.top = `${$("sum-legend").offsetHeight}px`;
+        tip.style.top = `${$(P + "-legend").offsetHeight}px`;
       }
 
       function hide() {
@@ -902,16 +979,16 @@
       svg.onpointerleave = hide;
 
       const avg = (key) => (results.reduce((a, r) => a + r[key], 0) / n).toFixed(1);
-      $("sum-stack-desc").textContent =
-        `直近${n}回の内訳（古い順）。平均は ` + PARTS.map((p) => `${p.name} ${avg(p.key)}/${p.max}`).join("、") + "。";
+      $(P + "-stack-desc").textContent =
+        `直近${n}回の内訳（古い順）。平均は ` + parts.map((p) => `${p.name} ${avg(p.key)}/${p.max}`).join("、") + "。";
     }
 
-    function renderSummaryParts(results) {
-      const withParts = results.filter(hasParts);
-      $("sum-parts").hidden = withParts.length === 0;   // 項目別の採点を入れる前の結果しか無い場合は出さない
+    function renderSummaryParts(results, P = "sum", parts = PARTS) {
+      const withParts = results.filter((r) => hasParts(r, parts));
+      $(P + "-parts").hidden = withParts.length === 0;   // 項目別の採点を入れる前の結果しか無い場合は出さない
       if (withParts.length === 0) return;
-      renderPartMeters(withParts);
-      renderPartStack(withParts);
+      renderPartMeters(withParts, P, parts);
+      renderPartStack(withParts, P, parts);
     }
 
     function youtubeUrl(videoId) {
@@ -999,14 +1076,152 @@
     window.addEventListener("resize", () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        if (!sumResults.length || $("app").hidden) return;
-        renderSummaryChart(sumResults);
-        renderSummaryParts(sumResults);
+        if ($("app").hidden) return;
+        if (sumResults.length) {
+          renderSummaryChart(sumResults);
+          renderSummaryParts(sumResults);
+        }
+        if (topResults.length) {
+          renderSummaryChart(topResults, "top");
+          renderSummaryParts(topResults, "top", TOPIC_PARTS);
+        }
       }, 150);
     });
 
-    // ---------- ハンバーガーメニューとページの切り替え (URL の #diary / #summary で直接開ける) ----------
-    const PAGES = { home: "学習ストリーク", diary: "日記の履歴", summary: "要約練習のスコア" };
+    // ---------- お題スピーキング ----------
+    const KIND_LABELS = { exam: "試験", daily: "身近な話題", work: "仕事・面接" };
+    let topResults = [];   // 古い順
+
+    function renderTopicList() {
+      const list = $("top-list");
+      list.replaceChildren();
+      for (const r of topResults.slice().reverse()) {
+        const card = el("div", "entry result");
+        card.append(el("div", "meta",
+          `${formatDateTime(r.createdAt)}  ·  ${KIND_LABELS[r.kind] || r.kind}  ·  ${r.timeLimit}秒`));
+        const head = el("div", "head");
+        const score = el("div", "score", String(r.score));
+        score.append(el("small", "", " / 100"));
+        head.append(score, el("span", "", r.topic));
+        card.append(head);
+        if (hasParts(r, TOPIC_PARTS)) card.append(el("div", "parts-line", partsText(r, TOPIC_PARTS)));
+
+        const details = el("details");
+        details.append(el("summary", "", "詳しく見る"));
+        for (const [label, text, fix] of [
+          ["あなたの答え", r.transcript],
+          ["良かった点", r.goodPoints],
+          ["直す点", r.fixPoints],
+          ["添削", r.corrected, true],
+          ["自然な言い方", r.natural, true],
+          ["次に使える表現", r.phrases, true],
+          ["言い直しの一致率", Number.isFinite(r.readAloudAccuracy) ? `${r.readAloudAccuracy}%` : ""],
+        ]) {
+          if (!text) continue;
+          details.append(el("div", fix ? "lbl fix" : "lbl", label), el("p", "", text));
+        }
+        card.append(details);
+        list.append(card);
+      }
+    }
+
+    function renderTopic() {
+      if (topResults.length === 0) {
+        $("top-stats").hidden = true;
+        $("top-chart").hidden = true;
+        $("top-parts").hidden = true;
+        $("top-list").replaceChildren(
+          el("p", "empty", "まだ結果がありません。アプリの「Topic」でお題について話すと、ここに点数の推移が表示されます。"));
+        return;
+      }
+      renderSummaryStats(topResults, "top");
+      renderSummaryChart(topResults, "top");
+      renderSummaryParts(topResults, "top", TOPIC_PARTS);
+      renderTopicList();
+    }
+
+    async function loadTopic() {
+      say($("top-msg"), "");
+      try {
+        topResults = (await api.getTopicResults()).reverse();   // 古い順にする
+        renderTopic();
+      } catch (err) {
+        say($("top-msg"), friendlyError(err), "error");
+      }
+    }
+
+    // ---------- よくあるミス ----------
+    const MISTAKE_LABELS = {
+      article: "冠詞 (a / the)", tense: "時制", preposition: "前置詞", agreement: "主語と動詞の一致",
+      plural: "単数・複数", verb_form: "動詞の形 (to / -ing)", word_order: "語順", word_choice: "単語の選び方",
+      missing_word: "抜けた語", other: "その他",
+    };
+    const SOURCE_LABELS = { diary: "日記", summary: "要約", topic: "お題" };
+    let misDays = 30;
+
+    function renderMistakes(stats) {
+      const list = $("mis-list");
+      list.replaceChildren();
+      const rows = stats.slice().sort((a, b) => b.count - a.count || b.previousCount - a.previousCount);
+      if (rows.length === 0) {
+        list.append(el("p", "empty", "この期間のミスはまだありません。アプリで添削すると、ここに種類ごとの回数が出ます。"));
+        return;
+      }
+      const max = Math.max(1, ...rows.map((r) => r.count));
+      rows.forEach((r, i) => {
+        const row = el("details", "mis-row" + (i < 5 && r.count > 0 ? " top" : ""));
+        const sum = el("summary");
+        const bar = el("div", "bar");
+        const fill = el("span");
+        fill.style.width = `${(r.count / max) * 100}%`;
+        bar.append(fill);
+        const cnt = el("span", "cnt", `${r.count}回`);
+        if (r.count !== r.previousCount) {
+          const up = r.count > r.previousCount;
+          const trend = el("span", up ? "trend up" : "trend down", up ? "↑" : "↓");
+          trend.title = `前の${misDays}日: ${r.previousCount}回`;
+          cnt.append(trend);
+        }
+        sum.append(el("span", "name", MISTAKE_LABELS[r.type] || r.type), bar, cnt);
+        row.append(sum);
+
+        const ul = el("ul", "mis-ex");
+        for (const e of r.examples) {
+          const li = el("li");
+          li.append(el("span", "wrong", e.wrong), document.createTextNode(" → "), el("span", "", e.fixed),
+                    el("span", "src", SOURCE_LABELS[e.source] || e.source));
+          ul.append(li);
+        }
+        if (r.examples.length === 0) ul.append(el("li", "", "この期間の例はありません。"));
+        row.append(ul);
+        list.append(row);
+      });
+    }
+
+    async function loadMistakes() {
+      say($("mis-msg"), "");
+      for (const b of $("mis-period").querySelectorAll("button")) {
+        b.setAttribute("aria-pressed", String(Number(b.dataset.days) === misDays));
+      }
+      try {
+        renderMistakes(await api.getMistakeStats(misDays));
+      } catch (err) {
+        say($("mis-msg"), friendlyError(err), "error");
+      }
+    }
+
+    for (const b of $("mis-period").querySelectorAll("button")) {
+      b.addEventListener("click", () => {
+        misDays = Number(b.dataset.days);
+        loadMistakes();
+      });
+    }
+
+    // ---------- ハンバーガーメニューとページの切り替え (URL の #diary / #summary / #topic / #mistakes で直接開ける) ----------
+    const PAGES = {
+      home: "学習ストリーク", diary: "日記の履歴", summary: "要約練習のスコア",
+      topic: "お題スピーキング", mistakes: "よくあるミス",
+    };
 
     function setMenu(open) {
       document.body.classList.toggle("menu-open", open);
@@ -1032,6 +1247,10 @@
       if (name === "summary" && sumResults.length) {
         renderSummaryChart(sumResults);
         renderSummaryParts(sumResults);
+      }
+      if (name === "topic" && topResults.length) {
+        renderSummaryChart(topResults, "top");
+        renderSummaryParts(topResults, "top", TOPIC_PARTS);
       }
     }
     for (const item of document.querySelectorAll(".menu-item[data-page]")) {

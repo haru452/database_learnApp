@@ -146,12 +146,12 @@ export function createStreakApi(supabase) {
     /**
      * 期間内の「やった日」(日付の古い順)。日記をやった日 / 要約練習をやった日。
      * @param {string} from "yyyy-mm-dd"   @param {string} to "yyyy-mm-dd" (約1年分まで)
-     * @returns {Array<{ date: string, diary: boolean, summary: boolean }>}
+     * @returns {Array<{ date: string, diary: boolean, summary: boolean, topic: boolean }>}
      */
     async getActivityDays(from, to) {
       const { data, error } = await supabase.rpc("get_my_activity_days", { p_from: from, p_to: to });
       if (error) throw error;
-      return (data || []).map((r) => ({ date: r.day, diary: !!r.diary, summary: !!r.summary }));
+      return (data || []).map((r) => ({ date: r.day, diary: !!r.diary, summary: !!r.summary, topic: !!r.topic }));
     },
 
     // ---------------- 日記 (アプリで保存された、直近7日分) ----------------
@@ -210,6 +210,51 @@ export function createStreakApi(supabase) {
         missedPoints: r.missed_points || "",
         languageFeedback: r.language_feedback || "",
         improvedSummary: r.improved_summary || "",
+      }));
+    },
+
+    // ---------------- お題スピーキング (アプリで保存された、新しい 20 件) ----------------
+
+    /** @returns 新しい順。点数は 内容 40 + 構成 30 + 文法・語彙 30 */
+    async getTopicResults(limit = 20) {
+      const { data, error } = await supabase.rpc("get_my_topic_results", { p_limit: limit });
+      if (error) throw error;
+      return (data || []).map((r) => ({
+        id: r.id,
+        date: r.entry_date,
+        createdAt: r.created_at,
+        kind: r.kind,
+        topic: r.topic || "",
+        timeLimit: r.time_limit_seconds,
+        score: r.score,
+        contentScore: r.content_score,
+        organizationScore: r.organization_score,
+        languageScore: r.language_score,
+        transcript: r.transcript || "",
+        corrected: r.corrected || "",
+        natural: r.natural_version || "",
+        goodPoints: r.good_points || "",
+        fixPoints: r.fix_points || "",
+        phrases: r.phrases || "",
+        readAloudAccuracy: r.read_aloud_accuracy,
+      }));
+    },
+
+    // ---------------- よくあるミス ----------------
+
+    /**
+     * 直近 days 日のミスの種類ごとの回数 (多い順)。previousCount はその前の同じ日数の回数。
+     * @returns {Array<{ type: string, count: number, previousCount: number,
+     *                   examples: Array<{ wrong: string, fixed: string, source: string, date: string }> }>}
+     */
+    async getMistakeStats(days) {
+      const { data, error } = await supabase.rpc("get_my_mistake_stats", { p_days: days });
+      if (error) throw error;
+      return (data || []).map((r) => ({
+        type: r.type,
+        count: r.count,
+        previousCount: r.previous_count,
+        examples: Array.isArray(r.examples) ? r.examples : [],
       }));
     },
   };
