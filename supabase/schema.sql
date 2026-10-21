@@ -32,9 +32,13 @@ grant select on public.streaks to authenticated;
 create table if not exists public.activity_days (
   user_id uuid not null references auth.users (id) on delete cascade,
   day     date not null,
-  kind    text not null check (kind in ('diary', 'summary')),
+  kind    text not null,
   primary key (user_id, day, kind)
 );
+-- 種類: diary (日記) / summary (要約練習) / topic (お題スピーキング、topic.sql)
+alter table public.activity_days drop constraint if exists activity_days_kind_check;
+alter table public.activity_days add constraint activity_days_kind_check
+  check (kind in ('diary', 'summary', 'topic'));
 alter table public.activity_days enable row level security;
 
 drop policy if exists "activity_days_select_own" on public.activity_days;
@@ -413,9 +417,9 @@ $$;
 -- ============================================================
 drop function if exists public.get_my_activity_days(date, date);
 
--- 期間内のやった日 (1日1行。日記 / 要約練習をやったか)。一度に読むのは約1年分まで
+-- 期間内のやった日 (1日1行。日記 / 要約練習 / お題スピーキングをやったか)。一度に読むのは約1年分まで
 create function public.get_my_activity_days(p_from date, p_to date)
-returns table (day date, diary boolean, summary boolean)
+returns table (day date, diary boolean, summary boolean, topic boolean)
 language sql
 stable
 security invoker
@@ -423,7 +427,8 @@ set search_path = public
 as $$
   select a.day,
          bool_or(a.kind = 'diary')   as diary,
-         bool_or(a.kind = 'summary') as summary
+         bool_or(a.kind = 'summary') as summary,
+         bool_or(a.kind = 'topic')   as topic
   from public.activity_days a
   where a.user_id = (select auth.uid())
     and a.day between p_from and least(p_to, p_from + 400)
