@@ -112,6 +112,16 @@
     .chart .col-hover { fill: var(--muted); fill-opacity: .1; }
     .tip .row { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
     .result summary { cursor: pointer; font-size: .8rem; color: var(--muted); }
+    /* 使い方 (たためる説明) */
+    .howto { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin: 0 0 14px; }
+    .howto > summary { cursor: pointer; font-size: .9rem; font-weight: 700; }
+    .howto ol { margin: 10px 0 0; padding-left: 1.3em; }
+    .howto li { font-size: .85rem; line-height: 1.6; margin: 0 0 10px; }
+    .howto li b { display: block; }
+    .howto ul { margin: 4px 0 0; padding-left: 1.1em; }
+    .howto li li { margin: 0 0 2px; }
+    .howto code { font-family: inherit; font-size: .8rem; padding: 1px 6px; border-radius: 6px; background: var(--line); }
+    .howto .note { font-size: .8rem; color: var(--muted); margin: 4px 0 0; }
     /* ---------- やった日カレンダー ---------- */
     .cal { margin: 24px 0 4px; }
     .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -355,6 +365,35 @@
 
       <div class="page" data-page="topic" hidden>
       <p class="hint">アプリの「Topic」で、お題について話したときの点数です（100点満点）。</p>
+      <details id="top-howto" class="howto">
+        <summary>使い方</summary>
+        <ol>
+          <li><b>お題をもらう</b><code>New Topic</code> を押すと、お題が出ます。種類は試験（Exam）・日常（Daily）・仕事（Work）のどれかで、話す時間は Daily が 45 秒、ほかは 60 秒です。
+            <ul>
+              <li>Hint: 答えの組み立て方のヒント</li>
+              <li>Today's focus: 最近よくするミスの種類（採点でも重点的に見ます）</li>
+            </ul>
+          </li>
+          <li><b>考える</b>「Think」のカウントダウン中に答えを考えます。準備ができたら <code>Start now</code> ですぐ話し始められます（0 になると自動で始まります）。</li>
+          <li><b>話す</b>英語で答えて、終わったら <code>Finish</code>（時間切れでも自動で終わります）。答えは録音されるので、話している途中に文字は出ません。</li>
+          <li><b>採点を待つ</b>Gemini が録音を聞いて書き起こし、採点します（1 分ほどかかることがあります）。
+            <ul>
+              <li>待っている間は Diary や Summary に移って大丈夫です。終わると通知が出て、タブが「Topic ●」になります。</li>
+              <li>失敗したときは録音が残っているので <code>Retry</code> で送り直せます。</li>
+            </ul>
+          </li>
+          <li><b>結果を見る</b>点数（内容 40・構成 30・文法と語彙 30）、良かった点・直す点、直した文（Corrected）、自然な言い方（More natural）、次に使える表現が出ます。</li>
+          <li><b>直した文を読む</b>質問の場所に、読む文（最大 3 文）が出ます。
+            <ul>
+              <li><code>Read aloud</code>: 読んで <code>Stop</code>。言えた単語は緑、言えなかった単語は赤で、一致率（%）が出ます。</li>
+              <li><code>Pronunciation check</code>: 読んで <code>Stop</code>。発音のアドバイスが出ます（点数は付きません）。</li>
+              <li><code>Next</code> で次の文へ。全部読むと平均の一致率が記録されます。</li>
+            </ul>
+          </li>
+          <li><b>記録を見る</b>このページで点数の推移と過去の結果、「よくあるミス」でミスの種類が見られます。カレンダーはお題をやった日が緑（2 種類で紫、3 つ全部で金）になり、お題だけの日も連続記録は途切れません。</li>
+        </ol>
+        <p class="note">考える時間や話している途中に別の画面へ移ると中断されます。考える時間の長さは Unity の Inspector の <code>Think Seconds</code> で変えられます。</p>
+      </details>
       <div id="top-stats" class="stats" hidden></div>
       <figure id="top-chart" class="chart" hidden>
         <svg id="top-svg" role="img" aria-labelledby="top-chart-desc"></svg>
