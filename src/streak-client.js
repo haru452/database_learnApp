@@ -151,7 +151,9 @@ export function createStreakApi(supabase) {
     async getActivityDays(from, to) {
       const { data, error } = await supabase.rpc("get_my_activity_days", { p_from: from, p_to: to });
       if (error) throw error;
-      return (data || []).map((r) => ({ date: r.day, diary: !!r.diary, summary: !!r.summary, topic: !!r.topic }));
+      return (data || []).map((r) => ({
+        date: r.day, diary: !!r.diary, summary: !!r.summary, topic: !!r.topic, repeat: !!r.repeat,
+      }));
     },
 
     // ---------------- 日記 (アプリで保存された、直近7日分) ----------------
@@ -216,6 +218,27 @@ export function createStreakApi(supabase) {
     // ---------------- お題スピーキング (アプリで保存された、新しい 20 件) ----------------
 
     /** @returns 新しい順。点数は 内容 40 + 構成 30 + 文法・語彙 30 */
+    /**
+     * リピーティングの結果 (1 文 = 1 件、新しい順)。
+     * @returns {Array<{ id: number, date: string, createdAt: string, sentence: string, heard: string,
+     *                   accuracy: number, replays: number, source: string, voice: string }>}
+     */
+    async getRepeatResults(limit = 200) {
+      const { data, error } = await supabase.rpc("get_my_repeat_results", { p_limit: limit });
+      if (error) throw error;
+      return (data || []).map((r) => ({
+        id: r.id,
+        date: r.entry_date,
+        createdAt: r.created_at,
+        sentence: r.sentence || "",
+        heard: r.heard || "",
+        accuracy: r.accuracy,
+        replays: r.replays,
+        source: r.source,
+        voice: r.voice,
+      }));
+    },
+
     async getTopicResults(limit = 20) {
       const { data, error } = await supabase.rpc("get_my_topic_results", { p_limit: limit });
       if (error) throw error;

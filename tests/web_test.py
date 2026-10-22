@@ -38,10 +38,12 @@ def day(n):
 
 
 ACTIVITY = [
-    {"day": day(0), "diary": True, "summary": True, "topic": True},    # 金
-    {"day": day(-1), "diary": True, "summary": False, "topic": True},  # 紫 (2種類)
-    {"day": day(-2), "diary": False, "summary": False, "topic": True}, # 緑 (お題だけ)
-    {"day": day(-3), "diary": True, "summary": False, "topic": False}, # オレンジ
+    {"day": day(0), "diary": True, "summary": True, "topic": True, "repeat": True},     # 金 (4つ全部)
+    {"day": day(-1), "diary": True, "summary": False, "topic": True, "repeat": False},  # 銅 (2種類)
+    {"day": day(-2), "diary": False, "summary": False, "topic": True, "repeat": False}, # 緑 (お題だけ)
+    {"day": day(-3), "diary": True, "summary": False, "topic": False, "repeat": False}, # オレンジ
+    {"day": day(-4), "diary": True, "summary": True, "topic": True, "repeat": False},   # 銀 (3種類)
+    {"day": day(-5), "diary": False, "summary": False, "topic": False, "repeat": True}, # ピンク (リピーティングだけ)
 ]
 
 XSS = '<img src=x onerror="window.__xss=1">'
@@ -79,6 +81,20 @@ MISTAKES = [
     {"type": "other", "count": 1, "previous_count": 1, "examples": [ex(XSS, "x", "diary")]},
 ]
 
+def rr(i, d, sentence, acc):
+    return {"id": i, "entry_date": day(d), "created_at": day(d) + "T03:00:00Z", "sentence": sentence,
+            "heard": sentence.lower(), "accuracy": acc, "replays": 1, "source": "tatoeba", "voice": "human"}
+
+
+REPEAT = [   # 新しい順 (サーバーと同じ)
+    rr(6, 0, "Could you send me the file?", 90),     # 前は 60% → 今は 90% なので苦手ではない
+    rr(5, 0, "I have lived here for three years.", 70),
+    rr(4, -1, XSS + " is not a tag.", 50),
+    rr(3, -1, "Could you send me the file?", 60),
+    rr(2, -1, "She cooked dinner for us.", 100),
+    rr(1, -5, "I have lived here for three years.", 40),
+]
+
 SUMMARY = [
     {"id": 1, "entry_date": day(0), "created_at": day(0) + "T03:00:00Z", "video_id": "abcdefghijk",
      "video_title": "Video", "time_limit_seconds": 60, "score": 70, "content_score": 35,
@@ -104,11 +120,12 @@ export function createClient() {
       if (name === "get_my_topic_results") return { data: DATA.topics, error: null };
       if (name === "get_my_mistake_stats") return { data: args.p_days === 90 ? DATA.mistakes.map((m) => ({ ...m, previous_count: null })) : DATA.mistakes, error: null };
       if (name === "get_my_summary_results") return { data: DATA.summary, error: null };
+      if (name === "get_my_repeat_results") return { data: DATA.repeat, error: null };
       return { data: [], error: null };
     },
   };
 }
-""" % json.dumps({"today": day(0), "activity": ACTIVITY, "topics": TOPICS, "mistakes": MISTAKES, "summary": SUMMARY})
+""" % json.dumps({"today": day(0), "activity": ACTIVITY, "topics": TOPICS, "mistakes": MISTAKES, "summary": SUMMARY, "repeat": REPEAT})
 
 failures = []
 
@@ -149,17 +166,22 @@ async def run(browser, scheme):
     page, errors = await open_page(browser, scheme)
 
     # カレンダー
-    check(await page.locator(".cal-day.gold").count() == 1, f"{scheme}: one gold day")
-    check(await page.locator(".cal-day.both").count() == 1, f"{scheme}: one purple (2 kinds) day")
+    check(await page.locator(".cal-day.gold").count() == 1, f"{scheme}: one gold (4 kinds) day")
+    check(await page.locator(".cal-day.silver").count() == 1, f"{scheme}: one silver (3 kinds) day")
+    check(await page.locator(".cal-day.bronze").count() == 1, f"{scheme}: one bronze (2 kinds) day")
+    check(await page.locator(".cal-day.both").count() == 0, f"{scheme}: no purple any more")
+    check(await page.locator(".cal-day.repeat").count() == 1, f"{scheme}: one repeat-only (pink) day")
     check(await page.locator(".cal-day.topic").count() == 1, f"{scheme}: one topic-only day")
     check(await page.locator(".cal-day.diary").count() == 1, f"{scheme}: one diary-only day")
     legend = await page.inner_text(".cal-legend")
-    check("お題" in legend and "3つ全部" in legend, f"{scheme}: legend has topic and gold")
+    check(all(w in legend for w in ("お題", "リピーティング", "2種類", "3種類", "4つ全部")), f"{scheme}: legend {legend}")
     await page.screenshot(path=f"/tmp/web_home_{scheme}.png")
 
     # メニュー
     items = await page.locator(".menu-item[data-page]").all_text_contents()  # メニューは閉じている (非表示) ので textContent で読む
     check("お題スピーキング" in items and "よくあるミス" in items, f"{scheme}: menu has the two new pages")
+    check("リピーティング" in items and items.index("リピーティング") == items.index("お題スピーキング") + 1,
+          f"{scheme}: menu has repeat after topic {items}")
 
     # お題スピーキング
     await go(page, "topic")
@@ -213,6 +235,27 @@ async def run(browser, scheme):
     calls = [c[1]["p_days"] for c in await page.evaluate("window.__calls") if c[0] == "get_my_mistake_stats"]
     check(calls[-3:] == [7, 30, 90], f"{scheme}: period buttons call p_days {calls}")
     await page.screenshot(path=f"/tmp/web_mistakes_{scheme}.png", full_page=True)
+
+    # リピーティング
+    await go(page, "repeat")
+    check(await visible_pages(page) == ["repeat"], f"{scheme}: only repeat page visible")
+    check(page.url.endswith("#repeat"), f"{scheme}: url #repeat")
+    rstats = await page.locator("#rep-stats .val").all_inner_texts()
+    check(rstats == ["3日", "68%", "80%", "80%"], f"{scheme}: repeat stats {rstats}")
+    check(await page.locator("#rep-svg circle.dot").count() >= 3, f"{scheme}: repeat chart has a point per day")
+    weak = await page.locator("#rep-weak .weak-row").all_inner_texts()
+    check(len(weak) == 2 and "I have lived here" in weak[0] and "70%" in weak[0] and "2回" in weak[0],
+          f"{scheme}: weak sentences (latest < 80%) {weak}")
+    check(not any("Could you send" in w for w in weak), f"{scheme}: improved sentence not weak")
+    check(await page.locator("#rep-list .day").count() == 3, f"{scheme}: results grouped by day")
+    check(await page.evaluate("window.__xss") is None, f"{scheme}: no script injection in repeat page")
+    rhow = page.locator("#rep-howto")
+    check(await rhow.get_attribute("open") is None, f"{scheme}: repeat how-to starts closed")
+    await rhow.locator("summary").click()
+    rhow_text = await rhow.inner_text()
+    for word in ("Start", "Again", "Slow", "Speak", "Next", "80%"):
+        check(word in rhow_text, f"{scheme}: repeat how-to mentions {word}")
+    await page.screenshot(path=f"/tmp/web_repeat_{scheme}.png", full_page=True)
 
     # 要約練習のページ (今まで通り)
     await go(page, "summary")

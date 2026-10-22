@@ -112,6 +112,15 @@
     .chart .col-hover { fill: var(--muted); fill-opacity: .1; }
     .tip .row { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
     .result summary { cursor: pointer; font-size: .8rem; color: var(--muted); }
+    /* リピーティング: 苦手な文・日ごとの結果 */
+    .weak-row { display: flex; gap: 10px; align-items: baseline; }
+    .weak-row .acc, .rep-row .acc { flex: none; width: 3.2em; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .weak-row .acc { color: var(--error); }
+    .weak-row .text { flex: 1; word-break: break-word; }
+    .weak-row .times { flex: none; font-size: .75rem; color: var(--muted); }
+    .rep-row { display: flex; gap: 10px; align-items: baseline; font-size: .9rem; margin: 0 0 6px; }
+    .rep-row .acc.low { color: var(--error); }
+    .rep-row .text { flex: 1; word-break: break-word; }
     /* 使い方 (たためる説明) */
     .howto { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin: 0 0 14px; }
     .howto > summary { cursor: pointer; font-size: .9rem; font-weight: 700; }
@@ -148,10 +157,12 @@
     .cal-day .flame { position: absolute; z-index: 1; width: 40px; height: 46px; top: 50%; left: 50%; transform: translate(-50%, -52%); }
     .cal-day.on .n { color: #1d2733; transform: translateY(3px); }
     .cal-day.diary   { --flame: #ff922b; }
-    .cal-day.topic   { --flame: #40c057; }
-    .cal-day.gold    { --flame: #fcc419; }
     .cal-day.summary { --flame: #4dabf7; }
-    .cal-day.both    { --flame: #9775fa; }
+    .cal-day.topic   { --flame: #40c057; }
+    .cal-day.repeat  { --flame: #f06595; }
+    .cal-day.bronze  { --flame: #c27c3e; }
+    .cal-day.silver  { --flame: #a3acb9; }
+    .cal-day.gold    { --flame: #fcc419; }
     .cal-day .flame path { fill: var(--flame); }
     .cal-day.today::after {
       content: ""; position: absolute; z-index: 2; bottom: 4px; left: 50%; width: 5px; height: 5px;
@@ -295,6 +306,7 @@
         <button class="menu-item" type="button" data-page="diary">日記の履歴</button>
         <button class="menu-item" type="button" data-page="summary">要約練習のスコア</button>
         <button class="menu-item" type="button" data-page="topic">お題スピーキング</button>
+        <button class="menu-item" type="button" data-page="repeat">リピーティング</button>
         <button class="menu-item" type="button" data-page="mistakes">よくあるミス</button>
         <div class="menu-sep"></div>
         <button id="logout" class="menu-item logout" type="button">ログアウト</button>
@@ -326,8 +338,10 @@
           <span style="--c:#ff922b">日記</span>
           <span style="--c:#4dabf7">要約練習</span>
           <span style="--c:#40c057">お題</span>
-          <span style="--c:#9775fa">2種類</span>
-          <span style="--c:#fcc419">3つ全部</span>
+          <span style="--c:#f06595">リピーティング</span>
+          <span style="--c:#c27c3e">2種類</span>
+          <span style="--c:#a3acb9">3種類</span>
+          <span style="--c:#fcc419">4つ全部</span>
         </div>
         <p id="cal-msg" class="msg" role="status"></p>
       </section>
@@ -413,6 +427,34 @@
       </section>
       <div id="top-list"></div>
       <p id="top-msg" class="msg" role="status"></p>
+      </div>
+
+      <div class="page" data-page="repeat" hidden>
+      <p class="hint">アプリの「Repeat」で、聞いた英文を言い返したときの一致率です（言えた単語の割合）。</p>
+      <details id="rep-howto" class="howto">
+        <summary>使い方</summary>
+        <ol>
+          <li><b>始める</b><code>Start</code> を押すと、5 文の練習が始まります。前回言えなかった文、自分の添削文（日記・要約・お題）、Tatoeba の文が混ざって出ます。</li>
+          <li><b>聞く</b>英文は見せずに読み上げます。Tatoeba の文は本物の人の声、自分の添削文は AI の声です。<code>Again</code> でもう一度、<code>Slow</code> でゆっくり（声の高さはそのまま）聞けます。</li>
+          <li><b>言い返す</b><code>Speak</code> を押して同じ文を言い、<code>Stop</code>。聞き取れなかったときは 0% にせず、もう一度言えます。</li>
+          <li><b>確かめる</b>英文が枠の中に出て、言えた単語は緑、抜けた単語は赤、一致率（%）が出ます。<code>Try again</code> で言い直し、<code>Next</code> で次の文へ。</li>
+          <li><b>まとめ</b>5 文が終わると平均が出ます。80% 未満の文は、次の練習で優先して出ます（このページの「苦手な文」）。</li>
+        </ol>
+        <p class="note">練習の途中でほかのタブへ移ると中断します。文と録音は Tatoeba（tatoeba.org）のものです（個人の学習用）。</p>
+      </details>
+      <div id="rep-stats" class="stats" hidden></div>
+      <figure id="rep-chart" class="chart" hidden>
+        <svg id="rep-svg" role="img" aria-labelledby="rep-chart-desc"></svg>
+        <div id="rep-tip" class="tip" hidden></div>
+        <figcaption id="rep-chart-desc" class="hint"></figcaption>
+      </figure>
+      <section id="rep-weak-sec" hidden>
+        <h3>苦手な文</h3>
+        <p class="hint">いちばん新しい結果が 80% 未満の文です。次の練習で優先して出ます。</p>
+        <div id="rep-weak"></div>
+      </section>
+      <div id="rep-list"></div>
+      <p id="rep-msg" class="msg" role="status"></p>
       </div>
 
       <div class="page" data-page="mistakes" hidden>
@@ -574,10 +616,11 @@
       loadDiary();
       loadSummary();
       loadTopic();
+      loadRepeat();
       loadMistakes();
     }
 
-    // ---------- やった日カレンダー (日記 = オレンジ / 要約練習 = 青 / 両方 = 紫) ----------
+    // ---------- やった日カレンダー (日記 = オレンジ / 要約 = 青 / お題 = 緑 / リピーティング = ピンク / 2種類 = 銅 / 3種類 = 銀 / 4つ全部 = 金) ----------
     const FLAME_SVG =
       '<svg class="flame" viewBox="0 0 40 46" aria-hidden="true"><path d="M20 0c1.2 3.6 3 6 4.6 8.4C25.8 6.6 27.6 5 29.2 4c4.6 5.6 7.8 12.6 7.8 21.5C37 36.6 29.4 45 20 45S3 36.6 3 25.5C3 16.6 6.2 9.6 10.8 4c1.6 1 3.4 2.6 4.6 4.4C17 6 18.8 3.6 20 0z"/></svg>';
     let calMonth = null;   // 表示中の月の1日
@@ -632,11 +675,12 @@
         if (iso === todayIso) cell.classList.add("today");
 
         let label = `${d.getMonth() + 1}月${d.getDate()}日`;
-        const kinds = a ? [a.diary && "日記", a.summary && "要約練習", a.topic && "お題"].filter(Boolean) : [];
+        const kinds = a ? [a.diary && "日記", a.summary && "要約練習", a.topic && "お題", a.repeat && "リピーティング"]
+          .filter(Boolean) : [];
         if (kinds.length > 0) {
-          // 1種類 = その色 / 2種類 = 紫 / 3種類全部 = 金
-          const kind = kinds.length === 3 ? "gold" : kinds.length === 2 ? "both"
-            : a.diary ? "diary" : a.summary ? "summary" : "topic";
+          // 1種類 = その色 / 2種類 = 銅 / 3種類 = 銀 / 4つ全部 = 金
+          const kind = kinds.length === 4 ? "gold" : kinds.length === 3 ? "silver" : kinds.length === 2 ? "bronze"
+            : a.diary ? "diary" : a.summary ? "summary" : a.topic ? "topic" : "repeat";
           cell.classList.add("on", kind);
           // 同じ週の中で、前後の日もやっていれば帯でつなぐ
           const prev = byDate.get(isoDate(addDays(d, -1)));
@@ -767,7 +811,8 @@
     }
 
     // 1回ごとの点数を、古い順に左から並べた折れ線グラフ
-    function renderSummaryChart(results, P = "sum") {
+    // U: 単位 (要約・お題は「点」、リピーティングは「%」と日ごと)
+    function renderSummaryChart(results, P = "sum", U = { unit: "点", what: "点数", per: "回" }) {
       const svg = $(P + "-svg");
       const tip = $(P + "-tip");
       svg.replaceChildren();
@@ -839,8 +884,8 @@
         focus.setAttribute("visibility", "visible");
 
         tip.replaceChildren(
-          el("div", "score", `${r.score}点`),
-          el("div", "sub", `${formatDateTime(r.createdAt)}  ·  ${i + 1}回目`),
+          el("div", "score", `${r.score}${U.unit}`),
+          el("div", "sub", `${formatDateTime(r.createdAt)}  ·  ${i + 1}${U.per}目`),
           el("div", "", r.videoTitle || r.topic || "(タイトルなし)"));
         tip.hidden = false;
         const scale = box.width / W;
@@ -860,7 +905,7 @@
 
       const lastScore = results[n - 1].score;
       $(P + "-chart-desc").textContent =
-        `${n}回分の点数の推移（古い順）。最新は${lastScore}点、最高は${Math.max(...results.map((r) => r.score))}点。`;
+        `${n}${U.per}分の${U.what}の推移（古い順）。最新は${lastScore}${U.unit}、最高は${Math.max(...results.map((r) => r.score))}${U.unit}。`;
     }
 
     // ---------- 項目ごとの点数 (内容 / 構成 / 文法・語彙) ----------
@@ -1189,6 +1234,90 @@
       }
     }
 
+    // ---------- リピーティング ----------
+    const REPEAT_UNIT = { unit: "%", what: "一致率", per: "日" };
+    const WEAK_LIMIT = 80;
+    let repDays = [];   // 日ごとの平均 (古い順) — グラフ用
+
+    const sentenceKey = (t) => t.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+    const average = (xs) => Math.round(xs.reduce((a, b) => a + b, 0) / xs.length);
+
+    function renderRepeat(results) {   // results: 新しい順
+      const list = $("rep-list");
+      list.replaceChildren();
+      $("rep-weak").replaceChildren();
+      if (results.length === 0) {
+        $("rep-stats").hidden = true;
+        $("rep-chart").hidden = true;
+        $("rep-weak-sec").hidden = true;
+        list.append(el("p", "empty", "まだ結果がありません。アプリの「Repeat」で練習すると、ここに一致率が表示されます。"));
+        repDays = [];
+        return;
+      }
+
+      // 日ごと (新しい順)
+      const byDay = new Map();
+      for (const r of results) {
+        if (!byDay.has(r.date)) byDay.set(r.date, []);
+        byDay.get(r.date).push(r);
+      }
+      repDays = [...byDay.entries()].reverse().map(([date, rs]) => ({
+        date, createdAt: date + "T12:00:00", score: average(rs.map((r) => r.accuracy)), topic: `${rs.length}文`,
+      }));
+
+      const box = $("rep-stats");
+      box.replaceChildren();
+      for (const [label, value] of [
+        ["練習した日", `${repDays.length}日`],
+        ["平均", `${average(results.map((r) => r.accuracy))}%`],
+        ["最新の日", `${repDays[repDays.length - 1].score}%`],
+        ["いちばん良い日", `${Math.max(...repDays.map((d) => d.score))}%`],
+      ]) {
+        const tile = el("div", "stat");
+        tile.append(el("div", "lbl", label), el("div", "val", value));
+        box.append(tile);
+      }
+      box.hidden = false;
+      renderSummaryChart(repDays, "rep", REPEAT_UNIT);
+
+      // 苦手な文: 文ごとに一番新しい結果が 80% 未満
+      const seen = new Map();
+      for (const r of results) {
+        const k = sentenceKey(r.sentence);
+        if (!seen.has(k)) seen.set(k, { latest: r, times: 0 });
+        seen.get(k).times++;
+      }
+      const weak = [...seen.values()].filter((w) => w.latest.accuracy < WEAK_LIMIT);
+      for (const w of weak) {
+        const row = el("div", "entry weak-row");
+        row.append(el("span", "acc", `${w.latest.accuracy}%`), el("span", "text", w.latest.sentence),
+                   el("span", "times", `${w.times}回`));
+        $("rep-weak").append(row);
+      }
+      $("rep-weak-sec").hidden = weak.length === 0;
+
+      // 日ごとの結果
+      for (const [date, rs] of byDay) {
+        list.append(el("div", "day", `${date}  ·  平均 ${average(rs.map((r) => r.accuracy))}%`));
+        const card = el("div", "entry");
+        for (const r of rs) {
+          const row = el("div", "rep-row");
+          row.append(el("span", "acc" + (r.accuracy < WEAK_LIMIT ? " low" : ""), `${r.accuracy}%`), el("span", "text", r.sentence));
+          card.append(row);
+        }
+        list.append(card);
+      }
+    }
+
+    async function loadRepeat() {
+      say($("rep-msg"), "");
+      try {
+        renderRepeat(await api.getRepeatResults());
+      } catch (err) {
+        say($("rep-msg"), friendlyError(err), "error");
+      }
+    }
+
     // ---------- よくあるミス ----------
     const MISTAKE_LABELS = {
       article: "冠詞 (a / the)", tense: "時制", preposition: "前置詞", agreement: "主語と動詞の一致",
@@ -1256,10 +1385,10 @@
       });
     }
 
-    // ---------- ハンバーガーメニューとページの切り替え (URL の #diary / #summary / #topic / #mistakes で直接開ける) ----------
+    // ---------- ハンバーガーメニューとページの切り替え (URL の #diary / #summary / #topic / #repeat / #mistakes で直接開ける) ----------
     const PAGES = {
       home: "学習ストリーク", diary: "日記の履歴", summary: "要約練習のスコア",
-      topic: "お題スピーキング", mistakes: "よくあるミス",
+      topic: "お題スピーキング", repeat: "リピーティング", mistakes: "よくあるミス",
     };
 
     function setMenu(open) {
@@ -1291,6 +1420,7 @@
         renderSummaryChart(topResults, "top");
         renderSummaryParts(topResults, "top", TOPIC_PARTS);
       }
+      if (name === "repeat" && repDays.length) renderSummaryChart(repDays, "rep", REPEAT_UNIT);
     }
     for (const item of document.querySelectorAll(".menu-item[data-page]")) {
       item.addEventListener("click", () => {
