@@ -236,6 +236,7 @@ export function createStreakApi(supabase) {
         replays: r.replays,
         source: r.source,
         voice: r.voice,
+        mode: r.mode === "shadow" ? "shadow" : "repeat",
       }));
     },
 

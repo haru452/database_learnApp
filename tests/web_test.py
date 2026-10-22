@@ -87,6 +87,7 @@ def rr(i, d, sentence, acc):
 
 
 REPEAT = [   # 新しい順 (サーバーと同じ)
+    dict(rr(7, 0, "We talked about the weather today.", 40), mode="shadow", source="bbc"),   # シャドーは苦手な文に入れない
     rr(6, 0, "Could you send me the file?", 90),     # 前は 60% → 今は 90% なので苦手ではない
     rr(5, 0, "I have lived here for three years.", 70),
     rr(4, -1, XSS + " is not a tag.", 50),
@@ -245,19 +246,22 @@ async def run(browser, scheme):
     check(await visible_pages(page) == ["repeat"], f"{scheme}: only repeat page visible")
     check(page.url.endswith("#repeat"), f"{scheme}: url #repeat")
     rstats = await page.locator("#rep-stats .val").all_inner_texts()
-    check(rstats == ["3日", "68%", "80%", "80%"], f"{scheme}: repeat stats {rstats}")
+    check(rstats == ["3日", "64%", "67%", "70%"], f"{scheme}: repeat stats count shadow too {rstats}")
     check(await page.locator("#rep-svg circle.dot").count() >= 3, f"{scheme}: repeat chart has a point per day")
     weak = await page.locator("#rep-weak .weak-row").all_inner_texts()
     check(len(weak) == 2 and "I have lived here" in weak[0] and "70%" in weak[0] and "2回" in weak[0],
           f"{scheme}: weak sentences (latest < 80%) {weak}")
     check(not any("Could you send" in w for w in weak), f"{scheme}: improved sentence not weak")
+    check(not any("weather" in w for w in weak), f"{scheme}: shadowing sentence not in weak sentences")
+    marks = await page.locator("#rep-list .rep-row .mode").all_inner_texts()
+    check(marks == ["シャドー"], f"{scheme}: shadow mark on the shadowing row only {marks}")
     check(await page.locator("#rep-list .day").count() == 3, f"{scheme}: results grouped by day")
     check(await page.evaluate("window.__xss") is None, f"{scheme}: no script injection in repeat page")
     rhow = page.locator("#rep-howto")
     check(await rhow.get_attribute("open") is None, f"{scheme}: repeat how-to starts closed")
     await rhow.locator("summary").click()
     rhow_text = await rhow.inner_text()
-    for word in ("Start", "Again", "Slow", "Speak", "Next", "80%"):
+    for word in ("Start", "Again", "Slow", "Speak", "Next", "80%", "Shadowing", "イヤホン", "BBC"):
         check(word in rhow_text, f"{scheme}: repeat how-to mentions {word}")
     await page.screenshot(path=f"/tmp/web_repeat_{scheme}.png", full_page=True)
 
