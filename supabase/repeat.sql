@@ -16,11 +16,19 @@ create table if not exists public.repeat_results (
   heard       text not null default '' check (char_length(heard) <= 500),
   accuracy    integer not null check (accuracy between 0 and 100),
   replays     integer not null default 0 check (replays between 0 and 99),
-  source      text not null check (source in ('diary', 'summary', 'topic', 'tatoeba')),
+  source      text not null,             -- diary / summary / topic / tatoeba / bbc (制約は下で付け直す)
   voice       text not null check (voice in ('human', 'gemini', 'device')),
   tatoeba_id  bigint,
   audio_id    bigint
 );
+-- シャドーイング (mode = 'shadow'、BBC の会話 = source 'bbc') を足した。前からある表にも足す
+alter table public.repeat_results add column if not exists mode text not null default 'repeat';
+alter table public.repeat_results drop constraint if exists repeat_results_mode_check;
+alter table public.repeat_results add constraint repeat_results_mode_check check (mode in ('repeat', 'shadow'));
+alter table public.repeat_results drop constraint if exists repeat_results_source_check;
+alter table public.repeat_results add constraint repeat_results_source_check
+  check (source in ('diary', 'summary', 'topic', 'tatoeba', 'bbc'));
+
 create index if not exists repeat_results_user_created_idx
   on public.repeat_results (user_id, created_at desc, id desc);
 
@@ -134,7 +142,7 @@ drop function if exists public.get_my_repeat_sentences(integer, integer, text);
 drop function if exists public.get_my_repeat_results(integer);
 
 -- 結果をまとめて保存する (最大 10 件)。保存した件数を返す。
--- p_results: [{sentence, heard, accuracy, replays, source, voice, tatoeba_id, audio_id}]
+-- p_results: [{sentence, heard, accuracy, replays, source, voice, tatoeba_id, audio_id, mode}]  (mode: repeat / shadow)
 create function public.save_repeat_results(p_timezone text, p_results jsonb, p_taken_at timestamptz default null)
 returns integer
 language plpgsql
@@ -148,6 +156,7 @@ declare
   v_text text;
   v_src  text;
   v_voice text;
+  v_mode text;
   v_n    integer := 0;
 begin
   if v_uid is null then
@@ -164,18 +173,21 @@ begin
     v_text := left(btrim(coalesce(v_item->>'sentence', '')), 300);
     continue when v_text = '';
     v_src := coalesce(v_item->>'source', '');
-    if v_src not in ('diary', 'summary', 'topic', 'tatoeba') then v_src := 'tatoeba'; end if;
+    if v_src not in ('diary', 'summary', 'topic', 'tatoeba', 'bbc') then v_src := 'tatoeba'; end if;
+    v_mode := coalesce(v_item->>'mode', '');
+    if v_mode not in ('repeat', 'shadow') then v_mode := 'repeat'; end if;
     v_voice := coalesce(v_item->>'voice', '');
     if v_voice not in ('human', 'gemini', 'device') then v_voice := 'device'; end if;
 
-    insert into public.repeat_results (user_id, entry_date, sentence, heard, accuracy, replays, source, voice, tatoeba_id, audio_id)
+    insert into public.repeat_results (user_id, entry_date, sentence, heard, accuracy, replays, source, voice, tatoeba_id, audio_id, mode)
     values (v_uid, v_date, v_text,
             left(coalesce(v_item->>'heard', ''), 500),
             least(greatest(coalesce((v_item->>'accuracy')::numeric, 0), 0), 100)::integer,
             least(greatest(coalesce((v_item->>'replays')::numeric, 0), 0), 99)::integer,
             v_src, v_voice,
             nullif((v_item->>'tatoeba_id')::numeric, 0)::bigint,
-            nullif((v_item->>'audio_id')::numeric, 0)::bigint);
+            nullif((v_item->>'audio_id')::numeric, 0)::bigint,
+            v_mode);
     v_n := v_n + 1;
   end loop;
 
@@ -210,6 +222,7 @@ as $$
            public._sentence_key(r.sentence) as k, r.sentence, r.source, r.tatoeba_id, r.audio_id, r.accuracy, r.created_at, r.id
       from public.repeat_results r
      where r.user_id = (select auth.uid())
+       and r.mode = 'repeat'   -- シャドーイングの文 (BBC の会話) は、リピーティングの「言えなかった文」に混ぜない
      order by public._sentence_key(r.sentence), r.created_at desc, r.id desc
   ),
   missed as (
@@ -260,13 +273,13 @@ $$;
 -- Web 用: 結果を新しい順に
 create function public.get_my_repeat_results(p_limit integer default 200)
 returns table (id bigint, entry_date date, created_at timestamptz, sentence text, heard text,
-               accuracy integer, replays integer, source text, voice text)
+               accuracy integer, replays integer, source text, voice text, mode text)
 language sql
 stable
 security invoker
 set search_path = public
 as $$
-  select r.id, r.entry_date, r.created_at, r.sentence, r.heard, r.accuracy, r.replays, r.source, r.voice
+  select r.id, r.entry_date, r.created_at, r.sentence, r.heard, r.accuracy, r.replays, r.source, r.voice, r.mode
     from public.repeat_results r
    where r.user_id = (select auth.uid())
    order by r.created_at desc, r.id desc

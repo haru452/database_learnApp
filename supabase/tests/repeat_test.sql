@@ -119,4 +119,23 @@ select count(*) as before_r from public.repeat_results \gset
 select pg_temp.check((select count(*) from public.repeat_results) = :before_r, 'rerun keeps results');
 select pg_temp.check(exists (select 1 from public.activity_days where kind = 'repeat'), 'rerun keeps repeat days');
 
+-- 10) シャドーイング: mode 列 (既定 repeat)、source bbc、言えなかった文に shadow を混ぜない
+select pg_temp.as_user(:'A');
+set role authenticated;
+select public.save_repeat_results('Asia/Tokyo',
+  '[{"sentence":"Shadow sentence about the weather today.","accuracy":50,"source":"bbc","voice":"human","mode":"shadow"},
+    {"sentence":"Plain repeat sentence for the mode test.","accuracy":90,"source":"tatoeba","voice":"human"},
+    {"sentence":"Odd mode sentence for the test here.","accuracy":90,"source":"tatoeba","voice":"human","mode":"x"}]'::jsonb, null);
+select pg_temp.check((select mode from public.repeat_results where sentence like 'Shadow sentence%') = 'shadow', 'mode shadow saved');
+select pg_temp.check((select source from public.repeat_results where sentence like 'Shadow sentence%') = 'bbc', 'source bbc saved');
+select pg_temp.check((select mode from public.repeat_results where sentence like 'Plain repeat%') = 'repeat', 'mode defaults to repeat');
+select pg_temp.check((select mode from public.repeat_results where sentence like 'Odd mode%') = 'repeat', 'unknown mode -> repeat');
+select pg_temp.check(not exists (select 1 from public.get_my_repeat_sentences(5, 0) where sentence like 'Shadow sentence%'),
+                     'shadow sentences never come back as missed');
+select pg_temp.check((select mode from public.get_my_repeat_results(1000) where sentence like 'Shadow sentence%') = 'shadow',
+                     'results return mode');
+reset role;
+\i ../repeat.sql
+select pg_temp.check((select count(*) from public.repeat_results where mode = 'shadow') = 1, 'rerun keeps mode column and rows');
+
 \echo ALL REPEAT TESTS PASSED
