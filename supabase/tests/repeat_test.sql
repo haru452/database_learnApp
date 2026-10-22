@@ -138,4 +138,13 @@ reset role;
 \i ../repeat.sql
 select pg_temp.check((select count(*) from public.repeat_results where mode = 'shadow') = 1, 'rerun keeps mode column and rows');
 
+-- 11) アプリはシャドーイングのとき p_version 2 を送る (mode の無い古いサーバーでは関数が見つからず、端末に一時保存される)
+select pg_temp.as_user(:'A');
+set role authenticated;
+select pg_temp.check(public.save_repeat_results(p_timezone => 'Asia/Tokyo',
+  p_results => '[{"sentence":"Second shadow sentence with a version.","accuracy":70,"source":"bbc","voice":"human","mode":"shadow"}]'::jsonb,
+  p_taken_at => null, p_version => 2) = 1, 'save with p_version 2');
+reset role;
+select pg_temp.check((select count(*) from pg_proc where proname = 'save_repeat_results') = 1, 'only one save_repeat_results (old signature dropped)');
+
 \echo ALL REPEAT TESTS PASSED

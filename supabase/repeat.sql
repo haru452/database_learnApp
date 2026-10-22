@@ -138,12 +138,15 @@ create trigger repeat_counts_as_study
 -- 4) アプリ・Web から呼ぶ関数
 -- ------------------------------------------------------------
 drop function if exists public.save_repeat_results(text, jsonb, timestamptz);
+drop function if exists public.save_repeat_results(text, jsonb, timestamptz, integer);
 drop function if exists public.get_my_repeat_sentences(integer, integer, text);
 drop function if exists public.get_my_repeat_results(integer);
 
 -- 結果をまとめて保存する (最大 10 件)。保存した件数を返す。
 -- p_results: [{sentence, heard, accuracy, replays, source, voice, tatoeba_id, audio_id, mode}]  (mode: repeat / shadow)
-create function public.save_repeat_results(p_timezone text, p_results jsonb, p_taken_at timestamptz default null)
+-- p_version: アプリはシャドーイングのとき 2 を送る (この引数の無い古い関数では「関数が無い」になり、アプリが端末に一時保存する)
+create function public.save_repeat_results(p_timezone text, p_results jsonb, p_taken_at timestamptz default null,
+                                           p_version integer default 1)
 returns integer
 language plpgsql
 security definer
@@ -286,9 +289,9 @@ as $$
    limit least(greatest(coalesce(p_limit, 200), 1), 1000);
 $$;
 
-revoke all on function public.save_repeat_results(text, jsonb, timestamptz) from public, anon;
+revoke all on function public.save_repeat_results(text, jsonb, timestamptz, integer) from public, anon;
 revoke all on function public.get_my_repeat_sentences(integer, integer, text) from public, anon;
 revoke all on function public.get_my_repeat_results(integer) from public, anon;
-grant execute on function public.save_repeat_results(text, jsonb, timestamptz) to authenticated;
+grant execute on function public.save_repeat_results(text, jsonb, timestamptz, integer) to authenticated;
 grant execute on function public.get_my_repeat_sentences(integer, integer, text) to authenticated;
 grant execute on function public.get_my_repeat_results(integer) to authenticated;
