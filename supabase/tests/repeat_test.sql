@@ -25,8 +25,13 @@ grant execute on function pg_temp.as_user(text) to authenticated;
 -- 1) 文の分け方: 「. ! ?」の後の空白で区切る。先頭の "- " を取る。4〜25 語・300 文字まで
 select pg_temp.check(
   (select array_agg(s) from public._split_sentences(E'I went home. - She has two cats!\nMr. Smith is here today? ok.') s)
-  = array['She has two cats!', 'Smith is here today?'],
-  'split: short pieces dropped, "- " removed');
+  = array['She has two cats!', 'Mr. Smith is here today?'],
+  'split: short pieces dropped, "- " removed, no split after "Mr."');
+select pg_temp.check(
+  (select array_agg(s) from public._split_sentences('I talked with Mr. Tanaka about the new project. I got up at 6 a.m. and went for a run. We met Dr. Brown, e.g. at the station.') s)
+  = array['I talked with Mr. Tanaka about the new project.', 'I got up at 6 a.m. and went for a run.',
+          'We met Dr. Brown, e.g. at the station.'],
+  'split: abbreviations (Mr. / a.m. / Dr. / e.g.) do not end a sentence');
 select pg_temp.check(
   (select count(*) from public._split_sentences(repeat('word ', 26) || 'end.')) = 0, 'split: more than 25 words dropped');
 select pg_temp.check(public._sentence_key('  She HAS two-cats! ') = 'she has twocats', 'key: lower, letters/digits/spaces only');

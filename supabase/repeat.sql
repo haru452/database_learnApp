@@ -41,7 +41,7 @@ create policy "repeat_results: read own" on public.repeat_results
 -- ------------------------------------------------------------
 
 -- 文章を 1 文ずつに分ける: 「. ! ?」の後の空白と改行で区切り、先頭の "- " などを取る。
--- 4〜25 語・300 文字までの文だけ返す (「Mr.」で切れた断片などは語数で落ちる)
+-- Mr. / Dr. / a.m. / e.g. などの略語の後では区切らない。4〜25 語・300 文字までの文だけ返す
 create or replace function public._split_sentences(p_text text)
 returns setof text
 language sql
@@ -50,7 +50,8 @@ set search_path = public
 as $$
   select s
     from (select btrim(regexp_replace(btrim(part), '^([-*•]|\d+[.)])\s+', '')) as s, n
-            from regexp_split_to_table(coalesce(p_text, ''), '(?<=[.!?])\s+|\n+') with ordinality as t(part, n)) x
+            from regexp_split_to_table(coalesce(p_text, ''),
+                 '(?<!\m(?:[Mm]r|[Mm]rs|[Mm]s|[Dd]r|[Ss]t|[Pp]rof|[Jj]r|[Ss]r|vs|etc|e\.g|i\.e|a\.m|p\.m)\.)(?<=[.!?])\s+|\n+') with ordinality as t(part, n)) x
    where s <> ''
      and char_length(s) <= 300
      and coalesce(array_length(regexp_split_to_array(s, '\s+'), 1), 0) between 4 and 25
