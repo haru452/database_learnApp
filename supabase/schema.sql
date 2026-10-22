@@ -35,10 +35,11 @@ create table if not exists public.activity_days (
   kind    text not null,
   primary key (user_id, day, kind)
 );
--- 種類: diary (日記) / summary (要約練習) / topic (お題スピーキング、topic.sql)
+-- 種類: diary (日記) / summary (要約練習) / topic (お題スピーキング、topic.sql) / repeat (リピーティング、repeat.sql)
+-- (topic.sql・repeat.sql も同じ 4 種類で付け直す。どれを後から実行しても、ほかの種類の行が制約違反にならないように)
 alter table public.activity_days drop constraint if exists activity_days_kind_check;
 alter table public.activity_days add constraint activity_days_kind_check
-  check (kind in ('diary', 'summary', 'topic'));
+  check (kind in ('diary', 'summary', 'topic', 'repeat'));
 alter table public.activity_days enable row level security;
 
 drop policy if exists "activity_days_select_own" on public.activity_days;
@@ -417,9 +418,9 @@ $$;
 -- ============================================================
 drop function if exists public.get_my_activity_days(date, date);
 
--- 期間内のやった日 (1日1行。日記 / 要約練習 / お題スピーキングをやったか)。一度に読むのは約1年分まで
+-- 期間内のやった日 (1日1行。日記 / 要約練習 / お題スピーキング / リピーティングをやったか)。一度に読むのは約1年分まで
 create function public.get_my_activity_days(p_from date, p_to date)
-returns table (day date, diary boolean, summary boolean, topic boolean)
+returns table (day date, diary boolean, summary boolean, topic boolean, repeat boolean)
 language sql
 stable
 security invoker
@@ -428,7 +429,8 @@ as $$
   select a.day,
          bool_or(a.kind = 'diary')   as diary,
          bool_or(a.kind = 'summary') as summary,
-         bool_or(a.kind = 'topic')   as topic
+         bool_or(a.kind = 'topic')   as topic,
+         bool_or(a.kind = 'repeat')  as repeat
   from public.activity_days a
   where a.user_id = (select auth.uid())
     and a.day between p_from and least(p_to, p_from + 400)

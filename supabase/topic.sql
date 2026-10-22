@@ -54,10 +54,11 @@ create table if not exists public.mistakes (
 );
 create index if not exists mistakes_user_date_idx on public.mistakes (user_id, entry_date desc);
 
--- 「やった日」の種類に topic を足す (schema.sql と同じ。古い schema.sql のままでも、お題を保存できるように)
+-- 「やった日」の種類 (schema.sql と同じ 4 種類。古い schema.sql のままでも、お題を保存できるように。
+-- repeat も入れておく: repeat.sql の後にこのファイルだけ実行し直しても、repeat の行が制約違反にならないように)
 alter table public.activity_days drop constraint if exists activity_days_kind_check;
 alter table public.activity_days add constraint activity_days_kind_check
-  check (kind in ('diary', 'summary', 'topic'));
+  check (kind in ('diary', 'summary', 'topic', 'repeat'));
 
 alter table public.topic_results enable row level security;
 alter table public.mistakes enable row level security;
