@@ -156,7 +156,7 @@
     .cal-day.on.first.last::before { display: none; }
     .cal-day .flame { position: absolute; z-index: 1; width: 40px; height: 46px; top: 50%; left: 50%; transform: translate(-50%, -52%); }
     .cal-day.on .n { color: #1d2733; transform: translateY(3px); }
-    .cal-day.diary   { --flame: #ff922b; }
+    .cal-day.diary   { --flame: #e03131; }
     .cal-day.summary { --flame: #4dabf7; }
     .cal-day.topic   { --flame: #40c057; }
     .cal-day.repeat  { --flame: #f06595; }
@@ -335,7 +335,7 @@
         </div>
         <div id="cal-grid" class="cal-grid" role="grid"></div>
         <div class="cal-legend">
-          <span style="--c:#ff922b">日記</span>
+          <span style="--c:#e03131">日記</span>
           <span style="--c:#4dabf7">要約練習</span>
           <span style="--c:#40c057">お題</span>
           <span style="--c:#f06595">リピーティング</span>
@@ -620,7 +620,7 @@
       loadMistakes();
     }
 
-    // ---------- やった日カレンダー (日記 = オレンジ / 要約 = 青 / お題 = 緑 / リピーティング = ピンク / 2種類 = 銅 / 3種類 = 銀 / 4つ全部 = 金) ----------
+    // ---------- やった日カレンダー (日記 = 赤 / 要約 = 青 / お題 = 緑 / リピーティング = ピンク / 2種類 = 銅 / 3種類 = 銀 / 4つ全部 = 金) ----------
     const FLAME_SVG =
       '<svg class="flame" viewBox="0 0 40 46" aria-hidden="true"><path d="M20 0c1.2 3.6 3 6 4.6 8.4C25.8 6.6 27.6 5 29.2 4c4.6 5.6 7.8 12.6 7.8 21.5C37 36.6 29.4 45 20 45S3 36.6 3 25.5C3 16.6 6.2 9.6 10.8 4c1.6 1 3.4 2.6 4.6 4.4C17 6 18.8 3.6 20 0z"/></svg>';
     let calMonth = null;   // 表示中の月の1日
