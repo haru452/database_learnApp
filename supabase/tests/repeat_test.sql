@@ -28,12 +28,16 @@ select pg_temp.check(
   = array['She has two cats!', 'Mr. Smith is here today?'],
   'split: short pieces dropped, "- " removed, no split after "Mr."');
 select pg_temp.check(
-  (select array_agg(s) from public._split_sentences('I talked with Mr. Tanaka about the new project. I got up at 6 a.m. and went for a run. We met Dr. Brown, e.g. at the station.') s)
-  = array['I talked with Mr. Tanaka about the new project.', 'I got up at 6 a.m. and went for a run.',
+  (select array_agg(s) from public._split_sentences('I talked with Mr. Tanaka about the new project. I got up at 6 a.m. and ran. We met Dr. Brown, e.g. at the station.') s)
+  = array['I talked with Mr. Tanaka about the new project.', 'I got up at 6 a.m. and ran.',
           'We met Dr. Brown, e.g. at the station.'],
   'split: abbreviations (Mr. / a.m. / Dr. / e.g.) do not end a sentence');
 select pg_temp.check(
-  (select count(*) from public._split_sentences(repeat('word ', 26) || 'end.')) = 0, 'split: more than 25 words dropped');
+  (select count(*) from public._split_sentences('one two three four five six seven eight nine ten eleven.')) = 0,
+  'split: more than 10 words dropped (too long to repeat)');
+select pg_temp.check(
+  (select count(*) from public._split_sentences('one two three four five six seven eight nine ten.')) = 1,
+  'split: 10 words kept');
 select pg_temp.check(public._sentence_key('  She HAS two-cats! ') = 'she has twocats', 'key: lower, letters/digits/spaces only');
 
 -- 2) 保存: 最大 10 件、範囲の丸め、知らない値

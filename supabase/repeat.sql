@@ -41,7 +41,8 @@ create policy "repeat_results: read own" on public.repeat_results
 -- ------------------------------------------------------------
 
 -- 文章を 1 文ずつに分ける: 「. ! ?」の後の空白と改行で区切り、先頭の "- " などを取る。
--- Mr. / Dr. / a.m. / e.g. などの略語の後では区切らない。4〜25 語・300 文字までの文だけ返す
+-- Mr. / Dr. / a.m. / e.g. などの略語の後では区切らない。
+-- 4〜10 語・300 文字までの文だけ返す (リピーティングで 1 回聞いて言い返せる長さ)
 create or replace function public._split_sentences(p_text text)
 returns setof text
 language sql
@@ -54,7 +55,7 @@ as $$
                  '(?<!\m(?:[Mm]r|[Mm]rs|[Mm]s|[Dd]r|[Ss]t|[Pp]rof|[Jj]r|[Ss]r|vs|etc|e\.g|i\.e|a\.m|p\.m)\.)(?<=[.!?])\s+|\n+') with ordinality as t(part, n)) x
    where s <> ''
      and char_length(s) <= 300
-     and coalesce(array_length(regexp_split_to_array(s, '\s+'), 1), 0) between 4 and 25
+     and coalesce(array_length(regexp_split_to_array(s, '\s+'), 1), 0) between 4 and 10
    order by n;
 $$;
 
