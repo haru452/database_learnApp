@@ -267,8 +267,6 @@ async def run(browser, scheme):
     for word in ("Start", "Again", "Slow", "Speak", "Next", "80%", "Shadowing", "イヤホン", "YouTube", "Search", "アドバイス"):
         check(word in rhow_text, f"{scheme}: repeat how-to mentions {word}")
     check("BBC" not in rhow_text, f"{scheme}: repeat how-to no longer mentions BBC")
-    for word in ():
-        check(word in rhow_text, f"{scheme}: repeat how-to mentions {word}")
     await page.screenshot(path=f"/tmp/web_repeat_{scheme}.png", full_page=True)
 
     # 要約練習のページ (今まで通り)
