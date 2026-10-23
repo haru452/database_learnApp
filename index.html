@@ -24,6 +24,8 @@
       background: var(--bg); color: var(--text);
       font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
     }
+    /* ログイン後は、中身が短いページでも画面の上に寄せる */
+    body:has(#app:not([hidden])) { align-items: start; }
     .card {
       width: 100%; max-width: 520px; background: var(--card); border: 1px solid var(--line);
       border-radius: 16px; padding: 28px 24px;
