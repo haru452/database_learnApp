@@ -821,8 +821,8 @@
       try {
         const { weeks, thisWeekDone } = await api.getWeekStreak();
         const pending = weeks > 0 && !thisWeekDone;
-        box.textContent = tr(`🗓 ${weeks}週連続` + (pending ? "（今週はまだ）" : ""),
-                             `🗓 ${weeks}-week streak` + (pending ? " (not this week yet)" : ""));
+        box.textContent = tr(`${weeks}週連続` + (pending ? "（今週はまだ）" : ""),
+                             `${weeks}-week streak` + (pending ? " (not this week yet)" : ""));
         box.hidden = false;
       } catch (err) {
         box.hidden = true;

@@ -170,6 +170,7 @@ async def run(browser, scheme):
     # 週の連続 (いつも出す。今週がまだなら添える)
     wk = await page.locator("#streak-weeks").inner_text()
     check("3週連続" in wk and "今週はまだ" in wk, f"{scheme}: week streak shown {wk!r}")
+    check(wk.startswith("3週連続"), f"{scheme}: week streak has no emoji {wk!r}")
     await page.click(".lang-switch button[data-lang=en] >> visible=true")
     await page.wait_for_timeout(400)
     wk_en = await page.locator("#streak-weeks").inner_text()
