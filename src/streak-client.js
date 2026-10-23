@@ -284,12 +284,27 @@ export function createStreakApi(supabase) {
   };
 }
 
-/** Supabase のエラーを、画面に出せる日本語のメッセージにする */
-export function friendlyError(error) {
+/**
+ * Supabase のエラーを、画面に出せるメッセージにする。
+ * lang: "ja" (日本語・省略時) または "en" (英語)
+ */
+export function friendlyError(error, lang = "ja") {
   const code = error && error.code;
   const message = (error && error.message) || String(error);
+  const en = lang === "en";
 
-  const byCode = {
+  const byCode = en ? {
+    invalid_credentials: "Incorrect email or password.",
+    email_not_confirmed: "Your email isn't confirmed yet. Open the link in the confirmation email.",
+    user_already_exists: "This email is already registered. Please log in.",
+    weak_password: "That password is too weak. Use at least 8 characters that are hard to guess.",
+    over_email_send_rate_limit: "Too many emails were sent. Please wait a while and try again.",
+    over_request_rate_limit: "Too many requests. Please wait a while and try again.",
+    signup_disabled: "New sign-ups are currently closed.",
+    validation_failed: "Please check what you entered.",
+    same_password: "That's your current password. Please choose a different one.",
+    otp_expired: "This link has expired. Use \u201cForgot password?\u201d in the app to get a new email.",
+  } : {
     invalid_credentials: "メールアドレスまたはパスワードが違います。",
     email_not_confirmed: "メールアドレスの確認がまだです。届いた確認メールのリンクを開いてください。",
     user_already_exists: "このメールアドレスは、すでに登録されています。ログインしてください。",
@@ -307,10 +322,18 @@ export function friendlyError(error) {
   if (/invalid login credentials/i.test(message)) return byCode.invalid_credentials;
   if (/email not confirmed/i.test(message)) return byCode.email_not_confirmed;
   if (/already registered/i.test(message)) return byCode.user_already_exists;
-  if (/at least \d+ characters/i.test(message)) return "パスワードが短すぎます。";
-  if (/get_my_summary_results/i.test(message)) return "要約練習の機能が、データベースにまだ追加されていません (supabase/summary.sql を実行してください)。";
-  if (/not authenticated/i.test(message)) return "ログインの有効期限が切れました。もう一度ログインしてください。";
-  if (/failed to fetch|networkerror|load failed/i.test(message)) return "通信に失敗しました。ネットワークを確認してください。";
+  if (/at least \d+ characters/i.test(message)) return en ? "That password is too short." : "パスワードが短すぎます。";
+  if (/get_my_summary_results/i.test(message)) {
+    return en
+      ? "The summary practice feature hasn't been added to the database yet (run supabase/summary.sql)."
+      : "要約練習の機能が、データベースにまだ追加されていません (supabase/summary.sql を実行してください)。";
+  }
+  if (/not authenticated/i.test(message)) {
+    return en ? "Your login has expired. Please log in again." : "ログインの有効期限が切れました。もう一度ログインしてください。";
+  }
+  if (/failed to fetch|networkerror|load failed/i.test(message)) {
+    return en ? "Couldn't connect. Please check your network." : "通信に失敗しました。ネットワークを確認してください。";
+  }
 
-  return "エラーが発生しました: " + message;
+  return (en ? "Something went wrong: " : "エラーが発生しました: ") + message;
 }

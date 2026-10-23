@@ -295,45 +295,77 @@
       /* 使い方の説明は読みやすい幅まで */
       .howto { max-width: 760px; }
     }
+    /* ---------- 言語の切り替え (日本語 / English) ---------- */
+    .lang-switch {
+      display: inline-flex; flex: none; margin-left: auto; padding: 2px;
+      border: 1px solid var(--line); border-radius: 999px;
+    }
+    .lang-switch button {
+      width: auto; margin: 0; padding: 5px 10px; font-size: .78rem; font-weight: 700; line-height: 1;
+      color: var(--muted); background: transparent; border-radius: 999px;
+    }
+    .lang-switch button:hover:not(:disabled) { color: var(--text); background: var(--line); }
+    .lang-switch button[aria-pressed="true"],
+    .lang-switch button[aria-pressed="true"]:hover:not(:disabled) { color: #fff; background: var(--accent); }
+    .lang-row { display: flex; align-items: center; gap: 12px; margin: 0 0 20px; }
+    .lang-row h1 { margin: 0; }
+    .topbar h1 { min-width: 0; }
+    /* 英語は項目名が長いので、名前の列を少し広くする */
+    html[lang="en"] .meter { grid-template-columns: 9.5em 1fr 4.5em; }
+    html[lang="en"] .mis-row summary { grid-template-columns: 10.5em 1fr auto; }
+    /* 使い方などの長い説明は、日本語版と英語版の両方を置いて、選んだほうだけ見せる */
+    html[lang="en"] [data-lang-block="ja"], html:not([lang="en"]) [data-lang-block="en"] { display: none; }
     [hidden] { display: none !important; }
   </style>
 </head>
 <body>
   <main class="card">
-    <p id="loading" class="msg">読み込み中...</p>
+    <p id="loading" class="msg" data-en="Loading...">読み込み中...</p>
 
     <!-- 設定が未入力のとき -->
     <section id="setup" hidden>
-      <h1>設定が必要です</h1>
-      <p class="msg error">config.js の SUPABASE_URL と SUPABASE_ANON_KEY を、自分のプロジェクトの値に書き換えてください。</p>
+      <h1 data-en="Setup needed">設定が必要です</h1>
+      <p class="msg error" data-en="In config.js, replace SUPABASE_URL and SUPABASE_ANON_KEY with your own project's values.">config.js の SUPABASE_URL と SUPABASE_ANON_KEY を、自分のプロジェクトの値に書き換えてください。</p>
     </section>
 
     <!-- ログイン / 新規登録 -->
     <section id="auth" hidden>
-      <h1 id="auth-title">ログイン</h1>
+      <div class="lang-row">
+        <h1 id="auth-title">ログイン</h1>
+        <div class="lang-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-lang="ja" aria-pressed="true" title="日本語">JA</button>
+          <button type="button" data-lang="en" aria-pressed="false" title="English">EN</button>
+        </div>
+      </div>
       <form id="auth-form" novalidate>
-        <label for="email">メールアドレス</label>
+        <label for="email" data-en="Email">メールアドレス</label>
         <input id="email" type="email" autocomplete="email" required>
-        <label for="password">パスワード (8文字以上)</label>
+        <label for="password" data-en="Password (8+ characters)">パスワード (8文字以上)</label>
         <input id="password" type="password" minlength="8" autocomplete="current-password" required>
         <button id="auth-submit" type="submit">ログイン</button>
       </form>
       <div class="links">
         <button id="auth-toggle" class="link" type="button">アカウントを作成する</button>
-        <button id="auth-forgot" class="link" type="button">パスワードを忘れた場合</button>
+        <button id="auth-forgot" class="link" type="button" data-en="Forgot password?">パスワードを忘れた場合</button>
       </div>
       <p id="auth-msg" class="msg" role="status"></p>
     </section>
 
     <!-- パスワード再設定 (メールのリンクから開いたとき) -->
     <section id="reset" hidden>
-      <h1>新しいパスワードを設定</h1>
+      <div class="lang-row">
+        <h1 data-en="Set a new password">新しいパスワードを設定</h1>
+        <div class="lang-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-lang="ja" aria-pressed="true" title="日本語">JA</button>
+          <button type="button" data-lang="en" aria-pressed="false" title="English">EN</button>
+        </div>
+      </div>
       <form id="reset-form" novalidate>
-        <label for="new-password">新しいパスワード (8文字以上)</label>
+        <label for="new-password" data-en="New password (8+ characters)">新しいパスワード (8文字以上)</label>
         <input id="new-password" type="password" minlength="8" autocomplete="new-password" required>
-        <label for="new-password2">もう一度入力</label>
+        <label for="new-password2" data-en="Enter it again">もう一度入力</label>
         <input id="new-password2" type="password" minlength="8" autocomplete="new-password" required>
-        <button id="reset-submit" type="submit">パスワードを変更する</button>
+        <button id="reset-submit" type="submit" data-en="Change password">パスワードを変更する</button>
       </form>
       <p id="reset-msg" class="msg" role="status"></p>
     </section>
@@ -341,34 +373,38 @@
     <!-- ログイン後 -->
     <section id="app" hidden>
       <header class="topbar">
-        <button id="menu-btn" class="menu-btn" type="button" aria-label="メニューを開く"
+        <button id="menu-btn" class="menu-btn" type="button" aria-label="メニューを開く" data-en-aria="Open menu"
                 aria-expanded="false" aria-controls="menu">
           <span></span><span></span><span></span>
         </button>
         <h1 id="page-title">学習ストリーク</h1>
+        <div class="lang-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-lang="ja" aria-pressed="true" title="日本語">JA</button>
+          <button type="button" data-lang="en" aria-pressed="false" title="English">EN</button>
+        </div>
       </header>
 
       <div id="menu-backdrop" class="menu-backdrop"></div>
-      <nav id="menu" class="menu" aria-label="メニュー">
+      <nav id="menu" class="menu" aria-label="メニュー" data-en-aria="Menu">
         <div class="menu-head">
-          <strong>メニュー</strong>
-          <button id="menu-close" class="menu-close" type="button" aria-label="メニューを閉じる">&times;</button>
+          <strong data-en="Menu">メニュー</strong>
+          <button id="menu-close" class="menu-close" type="button" aria-label="メニューを閉じる" data-en-aria="Close menu">&times;</button>
         </div>
         <p id="who" class="who"></p>
-        <button class="menu-item" type="button" data-page="home">連続記録とカレンダー</button>
-        <button class="menu-item" type="button" data-page="diary">日記の履歴</button>
-        <button class="menu-item" type="button" data-page="summary">要約練習のスコア</button>
-        <button class="menu-item" type="button" data-page="topic">お題スピーキング</button>
-        <button class="menu-item" type="button" data-page="repeat">リピーティング</button>
-        <button class="menu-item" type="button" data-page="mistakes">よくあるミス</button>
+        <button class="menu-item" type="button" data-page="home" data-en="Streak &amp; calendar">連続記録とカレンダー</button>
+        <button class="menu-item" type="button" data-page="diary" data-en="Diary history">日記の履歴</button>
+        <button class="menu-item" type="button" data-page="summary" data-en="Summary scores">要約練習のスコア</button>
+        <button class="menu-item" type="button" data-page="topic" data-en="Topic speaking">お題スピーキング</button>
+        <button class="menu-item" type="button" data-page="repeat" data-en="Repeating">リピーティング</button>
+        <button class="menu-item" type="button" data-page="mistakes" data-en="Common mistakes">よくあるミス</button>
         <div class="menu-sep"></div>
-        <button id="logout" class="menu-item logout" type="button">ログアウト</button>
+        <button id="logout" class="menu-item logout" type="button" data-en="Log out">ログアウト</button>
       </nav>
 
       <div class="page" data-page="home">
       <div class="streak">
         <div id="streak-num" class="num">0</div>
-        <div class="unit">日連続</div>
+        <div class="unit" data-en="day streak">日連続</div>
         <div id="streak-sub" class="sub"></div>
         <div id="streak-best" class="best"></div>
       </div>
@@ -379,35 +415,35 @@
         <div class="cal-head">
           <h2 id="cal-title">やった日</h2>
           <div class="cal-nav">
-            <button id="cal-prev" type="button" aria-label="前の月">&lsaquo;</button>
-            <button id="cal-next" type="button" aria-label="次の月">&rsaquo;</button>
+            <button id="cal-prev" type="button" aria-label="前の月" data-en-aria="Previous month">&lsaquo;</button>
+            <button id="cal-next" type="button" aria-label="次の月" data-en-aria="Next month">&rsaquo;</button>
           </div>
         </div>
         <div class="cal-week" aria-hidden="true">
-          <div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div>
+          <div data-en="Sun">日</div><div data-en="Mon">月</div><div data-en="Tue">火</div><div data-en="Wed">水</div><div data-en="Thu">木</div><div data-en="Fri">金</div><div data-en="Sat">土</div>
         </div>
         <div id="cal-grid" class="cal-grid" role="grid"></div>
         <div class="cal-legend">
-          <span style="--c:#e03131">日記</span>
-          <span style="--c:#4dabf7">要約練習</span>
-          <span style="--c:#40c057">お題</span>
-          <span style="--c:#f06595">リピーティング</span>
-          <span style="--c:#c27c3e">2種類</span>
-          <span style="--c:#a3acb9">3種類</span>
-          <span style="--c:#fcc419">4つ全部</span>
+          <span style="--c:#e03131" data-en="Diary">日記</span>
+          <span style="--c:#4dabf7" data-en="Summary">要約練習</span>
+          <span style="--c:#40c057" data-en="Topic">お題</span>
+          <span style="--c:#f06595" data-en="Repeating">リピーティング</span>
+          <span style="--c:#c27c3e" data-en="2 kinds">2種類</span>
+          <span style="--c:#a3acb9" data-en="3 kinds">3種類</span>
+          <span style="--c:#fcc419" data-en="All 4">4つ全部</span>
         </div>
         <p id="cal-msg" class="msg" role="status"></p>
       </section>
       </div>
 
       <div class="page" data-page="diary" hidden>
-      <p class="hint">アプリで添削した日記の、直近7日分です。</p>
+      <p class="hint" data-en="Diary entries corrected in the app, from the last 7 days.">アプリで添削した日記の、直近7日分です。</p>
       <div id="diary-list"></div>
       <p id="diary-msg" class="msg" role="status"></p>
       </div>
 
       <div class="page" data-page="summary" hidden>
-      <p class="hint">アプリの「Summary」で、動画を要約したときの点数です（100点満点）。</p>
+      <p class="hint" data-en="Your scores from summarizing videos in the app's &ldquo;Summary&rdquo; (out of 100).">アプリの「Summary」で、動画を要約したときの点数です（100点満点）。</p>
       <div id="sum-stats" class="stats" hidden></div>
       <figure id="sum-chart" class="chart" hidden>
         <svg id="sum-svg" role="img" aria-labelledby="sum-chart-desc"></svg>
@@ -415,8 +451,8 @@
         <figcaption id="sum-chart-desc" class="hint"></figcaption>
       </figure>
       <section id="sum-parts" hidden>
-        <h3>項目ごとの点数</h3>
-        <p class="hint">内容 50点 + 構成 25点 + 文法・語彙 25点 = 100点</p>
+        <h3 data-en="Score by category">項目ごとの点数</h3>
+        <p class="hint" data-en="Content 50 + Organization 25 + Grammar &amp; vocabulary 25 = 100">内容 50点 + 構成 25点 + 文法・語彙 25点 = 100点</p>
         <div id="sum-meters" class="meters"></div>
         <figure id="sum-stack" class="chart">
           <div id="sum-legend" class="legend"></div>
@@ -426,14 +462,15 @@
         </figure>
       </section>
       <div id="sum-list"></div>
-      <button id="sum-more" class="link" type="button" hidden>もっと見る</button>
+      <button id="sum-more" class="link" type="button" hidden data-en="Show more">もっと見る</button>
       <p id="sum-msg" class="msg" role="status"></p>
       </div>
 
       <div class="page" data-page="topic" hidden>
-      <p class="hint">アプリの「Topic」で、お題について話したときの点数です（100点満点）。</p>
+      <p class="hint" data-en="Your scores from speaking on a topic in the app's &ldquo;Topic&rdquo; (out of 100).">アプリの「Topic」で、お題について話したときの点数です（100点満点）。</p>
       <details id="top-howto" class="howto">
-        <summary>使い方</summary>
+        <summary data-en="How to use">使い方</summary>
+        <div data-lang-block="ja">
         <ol>
           <li><b>お題をもらう</b><code>New Topic</code> を押すと、お題が出ます。種類は試験（Exam）・日常（Daily）・仕事（Work）のどれかで、話す時間は Daily が 45 秒、ほかは 60 秒です。
             <ul>
@@ -460,6 +497,35 @@
           <li><b>記録を見る</b>このページで点数の推移と過去の結果、「よくあるミス」でミスの種類が見られます。カレンダーはお題をやった日が緑（2 種類で紫、3 つ全部で金）になり、お題だけの日も連続記録は途切れません。</li>
         </ol>
         <p class="note">考える時間や話している途中に別の画面へ移ると中断されます。考える時間の長さは Unity の Inspector の <code>Think Seconds</code> で変えられます。</p>
+        </div>
+        <div data-lang-block="en">
+        <ol>
+          <li><b>Get a topic</b>Press <code>New Topic</code> to get a topic. The type is Exam, Daily or Work, and you speak for 45 seconds for Daily and 60 seconds for the others.
+            <ul>
+              <li>Hint: tips on how to structure your answer</li>
+              <li>Today's focus: the kind of mistake you've been making lately (also checked closely when scoring)</li>
+            </ul>
+          </li>
+          <li><b>Think</b>Plan your answer during the &ldquo;Think&rdquo; countdown. When you're ready, press <code>Start now</code> to start speaking right away (it starts automatically at 0).</li>
+          <li><b>Speak</b>Answer in English and press <code>Finish</code> when you're done (it also ends when time runs out). Your answer is recorded, so no text appears while you speak.</li>
+          <li><b>Wait for scoring</b>Gemini listens to the recording, transcribes it and scores it (this can take about a minute).
+            <ul>
+              <li>You can move to Diary or Summary while you wait. When it's done you get a notification and the tab changes to &ldquo;Topic ●&rdquo;.</li>
+              <li>If it fails, the recording is kept, so you can send it again with <code>Retry</code>.</li>
+            </ul>
+          </li>
+          <li><b>See the results</b>You get your score (content 40, organization 30, grammar &amp; vocabulary 30), good points and points to fix, the corrected version (Corrected), a more natural version (More natural) and phrases to use next time.</li>
+          <li><b>Read the corrected sentences</b>Up to 3 sentences to read appear where the question was.
+            <ul>
+              <li><code>Read aloud</code>: read, then press <code>Stop</code>. Words you said turn green, words you missed turn red, and you get a match rate (%).</li>
+              <li><code>Pronunciation check</code>: read, then press <code>Stop</code>. You get pronunciation advice (no score).</li>
+              <li><code>Next</code> moves to the next sentence. After you read them all, your average match rate is saved.</li>
+            </ul>
+          </li>
+          <li><b>Check your records</b>This page shows your score trend and past results, and &ldquo;Common mistakes&rdquo; shows your mistake types. On the calendar, days you did a topic turn green (purple for 2 kinds, gold for all 3), and topic-only days keep your streak going.</li>
+        </ol>
+        <p class="note">Moving to another screen while thinking or speaking stops the session. You can change the thinking time with <code>Think Seconds</code> in Unity's Inspector.</p>
+        </div>
       </details>
       <div id="top-stats" class="stats" hidden></div>
       <figure id="top-chart" class="chart" hidden>
@@ -468,8 +534,8 @@
         <figcaption id="top-chart-desc" class="hint"></figcaption>
       </figure>
       <section id="top-parts" hidden>
-        <h3>項目ごとの点数</h3>
-        <p class="hint">内容 40点 + 構成 30点 + 文法・語彙 30点 = 100点</p>
+        <h3 data-en="Score by category">項目ごとの点数</h3>
+        <p class="hint" data-en="Content 40 + Organization 30 + Grammar &amp; vocabulary 30 = 100">内容 40点 + 構成 30点 + 文法・語彙 30点 = 100点</p>
         <div id="top-meters" class="meters"></div>
         <figure id="top-stack" class="chart">
           <div id="top-legend" class="legend"></div>
@@ -483,9 +549,10 @@
       </div>
 
       <div class="page" data-page="repeat" hidden>
-      <p class="hint">アプリの「Repeat」で、聞いた英文を言い返したときの一致率です（言えた単語の割合）。</p>
+      <p class="hint" data-en="Your match rate from repeating sentences you heard in the app's &ldquo;Repeat&rdquo; (the share of words you said).">アプリの「Repeat」で、聞いた英文を言い返したときの一致率です（言えた単語の割合）。</p>
       <details id="rep-howto" class="howto">
-        <summary>使い方</summary>
+        <summary data-en="How to use">使い方</summary>
+        <div data-lang-block="ja">
         <ol>
           <li><b>始める</b><code>Start</code> を押すと、5 文の練習が始まります。前回言えなかった文、自分の添削文（日記・要約・お題）、Tatoeba の文が混ざって出ます。</li>
           <li><b>聞く</b>英文は見せずに読み上げます。Tatoeba の文は本物の人の声、自分の添削文は AI の声です。<code>Again</code> でもう一度、<code>Slow</code> でゆっくり（声の高さはそのまま）聞けます。</li>
@@ -495,6 +562,18 @@
           <li><b>シャドーイング</b>上の <code>Shadowing: On</code> にすると、ふだん YouTube でシャドーイングしている動画で最後の確認ができます。タイトルを入れて <code>Search</code> で動画を選び、<code>Start</code> → 動画の ▶ を押すと、再生と同時に録音が始まります（最後まで、または <code>Stop</code> まで）。イヤホンを使ってください（付いていないと確認が出ます）。終わると文ごとの一致率と、発音・リズムについての Gemini のアドバイスが出て、<code>My voice</code> で自分の声を聞けます。Web には点数だけを保存し（アドバイスと文は Discord にだけ送ります）、結果には「シャドー」の印が付きます。苦手な文には入りません。</li>
         </ol>
         <p class="note">練習の途中でほかのタブへ移ると中断します。文と録音は Tatoeba（tatoeba.org）のものです（個人の学習用）。シャドーイングの動画は YouTube の埋め込みで流すだけで、保存しません。</p>
+        </div>
+        <div data-lang-block="en">
+        <ol>
+          <li><b>Start</b>Press <code>Start</code> to begin a 5-sentence practice. It mixes sentences you missed last time, your own corrected sentences (diary, summary, topic) and sentences from Tatoeba.</li>
+          <li><b>Listen</b>The sentence is read aloud without being shown. Tatoeba sentences use real human voices, and your corrected sentences use an AI voice. <code>Again</code> plays it again and <code>Slow</code> plays it slowly (same pitch).</li>
+          <li><b>Say it back</b>Press <code>Speak</code>, say the same sentence, then press <code>Stop</code>. If it couldn't hear you, it doesn't count as 0% &mdash; you can say it again.</li>
+          <li><b>Check</b>The sentence appears in the box: words you said turn green, missed words turn red, and you get a match rate (%). Press <code>Try again</code> to say it again, or <code>Next</code> for the next sentence.</li>
+          <li><b>Summary</b>After 5 sentences you see your average. Sentences under 80% come up first in your next practice (&ldquo;Weak sentences&rdquo; on this page).</li>
+          <li><b>Shadowing</b>Turn on <code>Shadowing: On</code> at the top to do a final check with a video you usually shadow on YouTube. Enter a title, choose the video with <code>Search</code>, then press <code>Start</code> &rarr; the video's ▶, and recording starts as the video plays (until the end, or until <code>Stop</code>). Please use earphones (you'll be asked to confirm if none are connected). When it ends you get a match rate for each sentence and Gemini's advice on pronunciation and rhythm, and <code>My voice</code> lets you hear yourself. Only the score is saved to the web (the advice and sentences go to Discord only), and the result is marked &ldquo;Shadow&rdquo;. These sentences are not added to weak sentences.</li>
+        </ol>
+        <p class="note">Moving to another tab during practice stops it. Sentences and recordings are from Tatoeba (tatoeba.org), for personal study. Shadowing videos are only played through YouTube embeds and are not saved.</p>
+        </div>
       </details>
       <div id="rep-stats" class="stats" hidden></div>
       <figure id="rep-chart" class="chart" hidden>
@@ -503,8 +582,8 @@
         <figcaption id="rep-chart-desc" class="hint"></figcaption>
       </figure>
       <section id="rep-weak-sec" hidden>
-        <h3>苦手な文</h3>
-        <p class="hint">いちばん新しい結果が 80% 未満の文です。次の練習で優先して出ます。</p>
+        <h3 data-en="Weak sentences">苦手な文</h3>
+        <p class="hint" data-en="Sentences whose latest result is under 80%. They come up first in your next practice.">いちばん新しい結果が 80% 未満の文です。次の練習で優先して出ます。</p>
         <div id="rep-weak"></div>
       </section>
       <div id="rep-list"></div>
@@ -512,11 +591,11 @@
       </div>
 
       <div class="page" data-page="mistakes" hidden>
-      <p class="hint">日記・要約・お題の添削で見つかったミスを、種類ごとに数えています（Gemini で添削したものだけ）。</p>
-      <div id="mis-period" class="mis-period" role="group" aria-label="期間">
-        <button type="button" data-days="7" aria-pressed="false">7日</button>
-        <button type="button" data-days="30" aria-pressed="true">30日</button>
-        <button type="button" data-days="90" aria-pressed="false">90日</button>
+      <p class="hint" data-en="Mistakes found when correcting your diary, summaries and topics, counted by type (only those corrected with Gemini).">日記・要約・お題の添削で見つかったミスを、種類ごとに数えています（Gemini で添削したものだけ）。</p>
+      <div id="mis-period" class="mis-period" role="group" aria-label="期間" data-en-aria="Period">
+        <button type="button" data-days="7" aria-pressed="false" data-en="7 days">7日</button>
+        <button type="button" data-days="30" aria-pressed="true" data-en="30 days">30日</button>
+        <button type="button" data-days="90" aria-pressed="false" data-en="90 days">90日</button>
       </div>
       <div id="mis-list"></div>
       <p id="mis-msg" class="msg" role="status"></p>
@@ -535,6 +614,46 @@
     };
     const say = (el, text, kind = "") => { el.textContent = text; el.className = "msg " + kind; };
 
+    // ---------- 言語 (日本語 / English)。選んだ言語はこのブラウザに覚えておく ----------
+    let lang = "ja";
+    try { if (localStorage.getItem("lang") === "en") lang = "en"; } catch { /* 保存できない環境では日本語 */ }
+    const tr = (ja, en) => (lang === "en" ? en : ja);
+    const locale = () => (lang === "en" ? "en-US" : "ja-JP");
+    const fe = (err) => friendlyError(err, lang);
+    let ready = false;   // 下の関数や変数がそろってから true にする
+
+    // data-en (文字) と data-en-aria (読み上げ用のラベル) を持つ要素を、選んだ言語にする
+    function applyStaticLang() {
+      document.documentElement.lang = lang;
+      document.title = tr("学習ストリーク", "Study Streak");
+      for (const n of document.querySelectorAll("[data-en]")) {
+        if (n.dataset.ja === undefined) n.dataset.ja = n.textContent;
+        n.textContent = lang === "en" ? n.dataset.en : n.dataset.ja;
+      }
+      for (const n of document.querySelectorAll("[data-en-aria]")) {
+        if (n.dataset.jaAria === undefined) n.dataset.jaAria = n.getAttribute("aria-label");
+        n.setAttribute("aria-label", lang === "en" ? n.dataset.enAria : n.dataset.jaAria);
+      }
+      for (const b of document.querySelectorAll(".lang-switch button")) {
+        b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
+      }
+    }
+
+    function setLang(next) {
+      if (next === lang) return;
+      lang = next;
+      try { localStorage.setItem("lang", lang); } catch { /* 保存できなくても、この画面では切り替える */ }
+      applyStaticLang();
+      if (!ready) return;
+      setModeLabels();
+      showPage(currentPage);
+      if (!$("app").hidden) loadStreak();   // グラフや一覧を、選んだ言語で作り直す
+    }
+    for (const b of document.querySelectorAll(".lang-switch button")) {
+      b.addEventListener("click", () => setLang(b.dataset.lang));
+    }
+    applyStaticLang();
+
     if (SUPABASE_URL.includes("YOUR-PROJECT-REF") || SUPABASE_ANON_KEY === "YOUR-ANON-KEY") {
       show("setup");
       throw new Error("config.js is not configured");
@@ -552,35 +671,42 @@
 
     // ---------- ログイン / 新規登録 ----------
     let mode = "signin";
+    function setModeLabels() {
+      const signup = mode === "signup";
+      $("auth-title").textContent = signup ? tr("アカウント作成", "Create account") : tr("ログイン", "Log in");
+      $("auth-submit").textContent = signup ? tr("登録する", "Sign up") : tr("ログイン", "Log in");
+      $("auth-toggle").textContent = signup ? tr("ログインに戻る", "Back to log in") : tr("アカウントを作成する", "Create an account");
+    }
     function setMode(next) {
       mode = next;
       const signup = mode === "signup";
-      $("auth-title").textContent = signup ? "アカウント作成" : "ログイン";
-      $("auth-submit").textContent = signup ? "登録する" : "ログイン";
-      $("auth-toggle").textContent = signup ? "ログインに戻る" : "アカウントを作成する";
+      setModeLabels();
       $("password").autocomplete = signup ? "new-password" : "current-password";
       $("auth-forgot").hidden = signup;
       say($("auth-msg"), "");
     }
+    setModeLabels();
     $("auth-toggle").addEventListener("click", () => setMode(mode === "signin" ? "signup" : "signin"));
 
     // パスワードを忘れた場合: 入力されたメールアドレスに、再設定用のリンクを送る
     $("auth-forgot").addEventListener("click", async () => {
       const email = $("email").value.trim();
       if (!email || !email.includes("@")) {
-        say($("auth-msg"), "上の欄にメールアドレスを入力してから、もう一度「パスワードを忘れた場合」を押してください。", "error");
+        say($("auth-msg"), tr("上の欄にメールアドレスを入力してから、もう一度「パスワードを忘れた場合」を押してください。",
+          "Enter your email above, then press \u201cForgot password?\u201d again."), "error");
         $("email").focus();
         return;
       }
       $("auth-forgot").disabled = true;
-      say($("auth-msg"), "送信中...");
+      say($("auth-msg"), tr("送信中...", "Sending..."));
       try {
         await api.sendPasswordReset(email);
         say($("auth-msg"),
-          "登録されているメールアドレスなら、パスワード再設定のメールを送りました。メールのリンクを開いて、新しいパスワードを設定してください。",
+          tr("登録されているメールアドレスなら、パスワード再設定のメールを送りました。メールのリンクを開いて、新しいパスワードを設定してください。",
+            "If this email is registered, we sent a password reset email. Open the link in it to set a new password."),
           "ok");
       } catch (err) {
-        say($("auth-msg"), friendlyError(err), "error");
+        say($("auth-msg"), fe(err), "error");
       } finally {
         $("auth-forgot").disabled = false;
       }
@@ -591,18 +717,19 @@
       const email = $("email").value.trim();
       const password = $("password").value;
       if (!email || password.length < 8) {
-        say($("auth-msg"), "メールアドレスと、8文字以上のパスワードを入力してください。", "error");
+        say($("auth-msg"), tr("メールアドレスと、8文字以上のパスワードを入力してください。", "Enter your email and a password of at least 8 characters."), "error");
         return;
       }
 
       $("auth-submit").disabled = true;
-      say($("auth-msg"), "処理中...");
+      say($("auth-msg"), tr("処理中...", "Working..."));
       try {
         if (mode === "signup") {
           const { needsEmailConfirmation } = await api.signUp(email, password);
           if (needsEmailConfirmation) {
             setMode("signin");   // setMode はメッセージを消すので、先に呼ぶ
-            say($("auth-msg"), "確認メールを送信しました。メール内のリンクを開いてから、ログインしてください。", "ok");
+            say($("auth-msg"), tr("確認メールを送信しました。メール内のリンクを開いてから、ログインしてください。",
+              "We sent a confirmation email. Open the link in it, then log in."), "ok");
           }
           // 確認が不要な設定なら、そのままログイン状態になり、onAuthChange で画面が切り替わる
         } else {
@@ -610,7 +737,7 @@
         }
         $("password").value = "";
       } catch (err) {
-        say($("auth-msg"), friendlyError(err), "error");
+        say($("auth-msg"), fe(err), "error");
       } finally {
         $("auth-submit").disabled = false;
       }
@@ -621,15 +748,15 @@
       e.preventDefault();
       const pw = $("new-password").value;
       if (pw.length < 8) {
-        say($("reset-msg"), "8文字以上のパスワードを入力してください。", "error");
+        say($("reset-msg"), tr("8文字以上のパスワードを入力してください。", "Enter a password of at least 8 characters."), "error");
         return;
       }
       if (pw !== $("new-password2").value) {
-        say($("reset-msg"), "2つの入力が一致しません。", "error");
+        say($("reset-msg"), tr("2つの入力が一致しません。", "The two passwords don't match."), "error");
         return;
       }
       $("reset-submit").disabled = true;
-      say($("reset-msg"), "処理中...");
+      say($("reset-msg"), tr("処理中...", "Working..."));
       try {
         await api.updatePassword(pw);
         recovering = false;
@@ -638,9 +765,10 @@
         $("new-password2").value = "";
         show("app");
         loadStreak();
-        say($("app-msg"), "パスワードを変更しました。アプリでも新しいパスワードでログインできます。", "ok");
+        say($("app-msg"), tr("パスワードを変更しました。アプリでも新しいパスワードでログインできます。",
+          "Your password was changed. You can also log in to the app with the new password."), "ok");
       } catch (err) {
-        say($("reset-msg"), friendlyError(err), "error");
+        say($("reset-msg"), fe(err), "error");
       } finally {
         $("reset-submit").disabled = false;
       }
@@ -649,14 +777,15 @@
     // ---------- ストリーク ----------
     function renderStreak({ streak, studiedToday, best }) {
       $("streak-num").textContent = String(streak);
-      $("streak-best").textContent = `最長記録: ${Math.max(best || 0, streak)}日`;
+      const bestDays = Math.max(best || 0, streak);
+      $("streak-best").textContent = tr(`最長記録: ${bestDays}日`, `Best: ${bestDays} ${bestDays === 1 ? "day" : "days"}`);
       $("streak-sub").textContent = studiedToday
-        ? "今日の学習は完了しています"
+        ? tr("今日の学習は完了しています", "You've studied today")
         : streak > 0
-          ? "今日学習すると、連続記録が続きます"
-          : "今日から始めましょう";
+          ? tr("今日学習すると、連続記録が続きます", "Study today to keep your streak going")
+          : tr("今日から始めましょう", "Start today");
       $("complete").disabled = studiedToday;
-      $("complete").textContent = studiedToday ? "今日は完了済みです" : "今日の学習を完了する";
+      $("complete").textContent = studiedToday ? tr("今日は完了済みです", "Done for today") : tr("今日の学習を完了する", "Mark today as done");
     }
 
     async function loadStreak() {
@@ -664,7 +793,7 @@
       try {
         renderStreak(await api.getStreak());
       } catch (err) {
-        say($("app-msg"), friendlyError(err), "error");
+        say($("app-msg"), fe(err), "error");
       }
       loadCalendar();
       loadDiary();
@@ -698,7 +827,9 @@
       // 表示する6週間分 (前後の月の日も含む。日曜はじまり)
       const start = addDays(calMonth, -calMonth.getDay());
       const end = addDays(start, 41);
-      $("cal-title").textContent = `${calMonth.getFullYear()}年${calMonth.getMonth() + 1}月`;
+      $("cal-title").textContent = lang === "en"
+        ? calMonth.toLocaleDateString("en-US", { year: "numeric", month: "long" })
+        : `${calMonth.getFullYear()}年${calMonth.getMonth() + 1}月`;
       $("cal-next").disabled = calMonth >= thisMonth;
       say($("cal-msg"), "");
 
@@ -706,7 +837,7 @@
       try {
         days = await api.getActivityDays(isoDate(start), isoDate(end));
       } catch (err) {
-        say($("cal-msg"), friendlyError(err), "error");
+        say($("cal-msg"), fe(err), "error");
       }
       const byDate = new Map(days.map((d) => [d.date, d]));
       renderCalendar(start, today, byDate);
@@ -728,8 +859,9 @@
         if (d.getMonth() !== calMonth.getMonth()) cell.classList.add("out");
         if (iso === todayIso) cell.classList.add("today");
 
-        let label = `${d.getMonth() + 1}月${d.getDate()}日`;
-        const kinds = a ? [a.diary && "日記", a.summary && "要約練習", a.topic && "お題", a.repeat && "リピーティング"]
+        let label = lang === "en" ? d.toLocaleDateString("en-US", { month: "long", day: "numeric" }) : `${d.getMonth() + 1}月${d.getDate()}日`;
+        const kinds = a ? [a.diary && tr("日記", "diary"), a.summary && tr("要約練習", "summary"), a.topic && tr("お題", "topic"),
+                           a.repeat && tr("リピーティング", "repeating")]
           .filter(Boolean) : [];
         if (kinds.length > 0) {
           // 1種類 = その色 / 2種類 = 銅 / 3種類 = 銀 / 4つ全部 = 金
@@ -742,7 +874,7 @@
           if (d.getDay() === 0 || !prev) cell.classList.add("first");
           if (d.getDay() === 6 || !next) cell.classList.add("last");
           cell.insertAdjacentHTML("beforeend", FLAME_SVG);
-          label += " " + kinds.join("・");
+          label += (lang === "en" ? ": " + kinds.join(", ") : " " + kinds.join("・"));
         }
         cell.setAttribute("aria-label", label);
         cell.append(el("span", "n", String(d.getDate())));
@@ -767,19 +899,20 @@
 
     function formatDay(isoDate) {
       const d = new Date(isoDate + "T00:00:00");
-      return isNaN(d) ? isoDate : d.toLocaleDateString("ja-JP", { month: "long", day: "numeric", weekday: "short" });
+      return isNaN(d) ? isoDate : d.toLocaleDateString(locale(), { month: "long", day: "numeric", weekday: "short" });
     }
 
     function formatTime(iso) {
       const d = new Date(iso);
-      return isNaN(d) ? "" : d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+      return isNaN(d) ? "" : d.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
     }
 
     function renderDiary(entries) {
       const list = $("diary-list");
       list.replaceChildren();
       if (entries.length === 0) {
-        list.append(el("p", "empty", "まだ日記がありません。アプリで日記を添削すると、ここに表示されます。"));
+        list.append(el("p", "empty", tr("まだ日記がありません。アプリで日記を添削すると、ここに表示されます。",
+          "No diary entries yet. They appear here once you correct a diary entry in the app.")));
         return;
       }
       let lastDate = null;
@@ -790,9 +923,9 @@
         }
         const card = el("div", "entry");
         card.append(el("div", "meta", [formatTime(e.createdAt), e.engine].filter(Boolean).join("  ·  ")));
-        card.append(el("div", "lbl", "あなたの文章"));
+        card.append(el("div", "lbl", tr("あなたの文章", "What you wrote")));
         card.append(el("p", "", e.original));
-        card.append(el("div", "lbl fix", "添削後"));
+        card.append(el("div", "lbl fix", tr("添削後", "Corrected")));
         card.append(el("p", "", e.corrected));
         if (e.explanation) card.append(el("p", "exp", e.explanation));
         list.append(card);
@@ -804,7 +937,7 @@
       try {
         renderDiary(await api.getDiary());
       } catch (err) {
-        say($("diary-msg"), friendlyError(err), "error");
+        say($("diary-msg"), fe(err), "error");
       }
     }
 
@@ -815,10 +948,11 @@
         const r = await api.completeStudy();
         renderStreak({ streak: r.streak, studiedToday: true, best: r.best });
         say($("app-msg"),
-          r.alreadyDone ? "今日はすでに完了しています。" : `${r.streak}日連続になりました。`,
+          r.alreadyDone ? tr("今日はすでに完了しています。", "Already done for today.")
+            : tr(`${r.streak}日連続になりました。`, `${r.streak}-day streak!`),
           "ok");
       } catch (err) {
-        say($("app-msg"), friendlyError(err), "error");
+        say($("app-msg"), fe(err), "error");
         $("complete").disabled = false;
       }
     });
@@ -837,12 +971,12 @@
 
     function formatDateTime(iso) {
       const d = new Date(iso);
-      return isNaN(d) ? "" : d.toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      return isNaN(d) ? "" : d.toLocaleString(locale(), { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
     }
 
     function formatShortDate(iso) {
       const d = new Date(iso);
-      return isNaN(d) ? "" : d.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" });
+      return isNaN(d) ? "" : d.toLocaleDateString(locale(), { month: "numeric", day: "numeric" });
     }
 
     function renderSummaryStats(results, P = "sum") {
@@ -851,10 +985,10 @@
       const scores = results.map((r) => r.score);
       const recent = scores.slice(-5);
       const items = [
-        ["回数", `${scores.length}回`],
-        ["最新", String(scores[scores.length - 1])],
-        ["直近5回の平均", (recent.reduce((a, b) => a + b, 0) / recent.length).toFixed(0)],
-        ["最高", String(Math.max(...scores))],
+        [tr("回数", "Attempts"), tr(`${scores.length}回`, String(scores.length))],
+        [tr("最新", "Latest"), String(scores[scores.length - 1])],
+        [tr("直近5回の平均", "Last 5 avg."), (recent.reduce((a, b) => a + b, 0) / recent.length).toFixed(0)],
+        [tr("最高", "Best"), String(Math.max(...scores))],
       ];
       for (const [label, value] of items) {
         const tile = el("div", "stat");
@@ -864,9 +998,16 @@
       box.hidden = false;
     }
 
+    // グラフの単位と説明文 (要約・お題は 1回ごとの「点」、リピーティングは 1日ごとの「%」)
+    const SCORE_UNIT = {
+      unit: () => tr("点", " pts"),
+      nth: (i) => tr(`${i}回目`, `#${i}`),
+      desc: (n, last, best) => tr(`${n}回分の点数の推移（古い順）。最新は${last}点、最高は${best}点。`,
+        `Scores over ${n} ${n === 1 ? "attempt" : "attempts"} (oldest first). Latest: ${last}, best: ${best}.`),
+    };
+
     // 1回ごとの点数を、古い順に左から並べた折れ線グラフ
-    // U: 単位 (要約・お題は「点」、リピーティングは「%」と日ごと)
-    function renderSummaryChart(results, P = "sum", U = { unit: "点", what: "点数", per: "回" }) {
+    function renderSummaryChart(results, P = "sum", U = SCORE_UNIT) {
       const svg = $(P + "-svg");
       const tip = $(P + "-tip");
       svg.replaceChildren();
@@ -938,9 +1079,9 @@
         focus.setAttribute("visibility", "visible");
 
         tip.replaceChildren(
-          el("div", "score", `${r.score}${U.unit}`),
-          el("div", "sub", `${formatDateTime(r.createdAt)}  ·  ${i + 1}${U.per}目`),
-          el("div", "", r.videoTitle || r.topic || "(タイトルなし)"));
+          el("div", "score", `${r.score}${U.unit()}`),
+          el("div", "sub", `${formatDateTime(r.createdAt)}  ·  ${U.nth(i + 1)}`),
+          el("div", "", r.videoTitle || r.topic || tr("(タイトルなし)", "(no title)")));
         tip.hidden = false;
         const scale = box.width / W;
         const left = cx * scale + 12 + tip.offsetWidth > box.width ? cx * scale - 12 - tip.offsetWidth : cx * scale + 12;
@@ -958,21 +1099,27 @@
       svg.onpointerleave = hide;
 
       const lastScore = results[n - 1].score;
-      $(P + "-chart-desc").textContent =
-        `${n}${U.per}分の${U.what}の推移（古い順）。最新は${lastScore}${U.unit}、最高は${Math.max(...results.map((r) => r.score))}${U.unit}。`;
+      $(P + "-chart-desc").textContent = U.desc(n, lastScore, Math.max(...results.map((r) => r.score)));
     }
 
     // ---------- 項目ごとの点数 (内容 / 構成 / 文法・語彙) ----------
+    // 項目の名前は、選んだ言語で返す (get name)
+    const PART_NAMES = {
+      contentScore: ["内容", "Content"], organizationScore: ["構成", "Organization"], languageScore: ["文法・語彙", "Grammar & vocab"],
+    };
+    const part = (key, max, cls, color) => ({
+      key, max, cls, color, get name() { return tr(...PART_NAMES[key]); },
+    });
     const PARTS = [
-      { key: "contentScore", name: "内容", max: 50, cls: "seg-1", color: "var(--part-1)" },
-      { key: "organizationScore", name: "構成", max: 25, cls: "seg-2", color: "var(--part-2)" },
-      { key: "languageScore", name: "文法・語彙", max: 25, cls: "seg-3", color: "var(--part-3)" },
+      part("contentScore", 50, "seg-1", "var(--part-1)"),
+      part("organizationScore", 25, "seg-2", "var(--part-2)"),
+      part("languageScore", 25, "seg-3", "var(--part-3)"),
     ];
     // お題スピーキングの配分 (内容 40 + 構成 30 + 文法・語彙 30)
     const TOPIC_PARTS = [
-      { key: "contentScore", name: "内容", max: 40, cls: "seg-1", color: "var(--part-1)" },
-      { key: "organizationScore", name: "構成", max: 30, cls: "seg-2", color: "var(--part-2)" },
-      { key: "languageScore", name: "文法・語彙", max: 30, cls: "seg-3", color: "var(--part-3)" },
+      part("contentScore", 40, "seg-1", "var(--part-1)"),
+      part("organizationScore", 30, "seg-2", "var(--part-2)"),
+      part("languageScore", 30, "seg-3", "var(--part-3)"),
     ];
     const STACK_COUNT = 20;   // 内訳のグラフに出す回数 (直近)
     const AVERAGE_COUNT = 5;  // 平均を出す回数 (直近)
@@ -1007,7 +1154,7 @@
         row.append(name, track, el("div", "val", `${avg.toFixed(1)} / ${p.max}`));
         box.append(row);
       }
-      box.append(el("p", "hint", `直近${recent.length}回の平均`));
+      box.append(el("p", "hint", tr(`直近${recent.length}回の平均`, `Average of the last ${recent.length}`)));
     }
 
     // 1回ごとに、3項目を積み上げた棒 (棒の高さ = 合計点)
@@ -1022,7 +1169,7 @@
       legend.replaceChildren();
       for (const p of parts) {
         const item = el("span");
-        item.append(swatch(p.color), document.createTextNode(`${p.name}（${p.max}点）`));
+        item.append(swatch(p.color), document.createTextNode(tr(`${p.name}（${p.max}点）`, `${p.name} (${p.max})`)));
         legend.append(item);
       }
 
@@ -1092,7 +1239,7 @@
         hover.setAttribute("visibility", "visible");
 
         tip.replaceChildren(
-          el("div", "score", `合計 ${r.score}点`),
+          el("div", "score", tr(`合計 ${r.score}点`, `Total ${r.score}`)),
           el("div", "sub", formatDateTime(r.createdAt)));
         for (const p of parts.slice().reverse()) {   // 棒と同じ並び (上から)
           const row = el("div", "row");
@@ -1118,7 +1265,8 @@
 
       const avg = (key) => (results.reduce((a, r) => a + r[key], 0) / n).toFixed(1);
       $(P + "-stack-desc").textContent =
-        `直近${n}回の内訳（古い順）。平均は ` + parts.map((p) => `${p.name} ${avg(p.key)}/${p.max}`).join("、") + "。";
+        tr(`直近${n}回の内訳（古い順）。平均は `, `Breakdown of the last ${n} (oldest first). Averages: `) +
+        parts.map((p) => `${p.name} ${avg(p.key)}/${p.max}`).join(tr("、", ", ")) + tr("。", ".");
     }
 
     function renderSummaryParts(results, P = "sum", parts = PARTS) {
@@ -1139,7 +1287,7 @@
       const newestFirst = sumResults.slice().reverse();
       for (const r of newestFirst.slice(0, sumShown)) {
         const card = el("div", "entry result");
-        card.append(el("div", "meta", `${formatDateTime(r.createdAt)}  ·  ${r.timeLimit}秒`));
+        card.append(el("div", "meta", `${formatDateTime(r.createdAt)}  ·  ${r.timeLimit}${tr("秒", " sec")}`));
 
         const head = el("div", "head");
         const score = el("div", "score", String(r.score));
@@ -1159,14 +1307,14 @@
         if (hasParts(r)) card.append(el("div", "parts-line", partsText(r)));
 
         const details = el("details");
-        details.append(el("summary", "", "詳しく見る"));
+        details.append(el("summary", "", tr("詳しく見る", "Details")));
         for (const [label, text, fix] of [
-          ["あなたの要約", r.transcript],
-          ["押さえた点", r.goodPoints],
-          ["抜けた点", r.missedPoints],
-          ["文法・言い回し", r.languageFeedback],
-          ["お手本の要約", r.referenceSummary, true],
-          ["あなたの要約の改善例", r.improvedSummary, true],
+          [tr("あなたの要約", "Your summary"), r.transcript],
+          [tr("押さえた点", "Points you covered"), r.goodPoints],
+          [tr("抜けた点", "Points you missed"), r.missedPoints],
+          [tr("文法・言い回し", "Grammar & wording"), r.languageFeedback],
+          [tr("お手本の要約", "Model summary"), r.referenceSummary, true],
+          [tr("あなたの要約の改善例", "Your summary, improved"), r.improvedSummary, true],
         ]) {
           if (!text) continue;
           details.append(el("div", fix ? "lbl fix" : "lbl", label), el("p", "", text));
@@ -1184,7 +1332,8 @@
         $("sum-parts").hidden = true;
         $("sum-more").hidden = true;
         $("sum-list").replaceChildren(
-          el("p", "empty", "まだ結果がありません。アプリの「Summary」で動画を要約すると、ここに点数の推移が表示されます。"));
+          el("p", "empty", tr("まだ結果がありません。アプリの「Summary」で動画を要約すると、ここに点数の推移が表示されます。",
+            "No results yet. Summarize a video in the app\u2019s \u201cSummary\u201d and your score trend appears here.")));
         return;
       }
       renderSummaryStats(sumResults);
@@ -1200,7 +1349,7 @@
         sumShown = LIST_PAGE;
         renderSummary();
       } catch (err) {
-        say($("sum-msg"), friendlyError(err), "error");
+        say($("sum-msg"), fe(err), "error");
       }
     }
 
@@ -1228,7 +1377,9 @@
     });
 
     // ---------- お題スピーキング ----------
-    const KIND_LABELS = { exam: "試験", daily: "身近な話題", work: "仕事・面接" };
+    const kindLabel = (k) => (lang === "en"
+      ? { exam: "Exam", daily: "Daily", work: "Work / interview" }
+      : { exam: "試験", daily: "身近な話題", work: "仕事・面接" })[k] || k;
     let topResults = [];   // 古い順
 
     function renderTopicList() {
@@ -1237,7 +1388,7 @@
       for (const r of topResults.slice().reverse()) {
         const card = el("div", "entry result");
         card.append(el("div", "meta",
-          `${formatDateTime(r.createdAt)}  ·  ${KIND_LABELS[r.kind] || r.kind}  ·  ${r.timeLimit}秒`));
+          `${formatDateTime(r.createdAt)}  ·  ${kindLabel(r.kind)}  ·  ${r.timeLimit}${tr("秒", " sec")}`));
         const head = el("div", "head");
         const score = el("div", "score", String(r.score));
         score.append(el("small", "", " / 100"));
@@ -1246,15 +1397,15 @@
         if (hasParts(r, TOPIC_PARTS)) card.append(el("div", "parts-line", partsText(r, TOPIC_PARTS)));
 
         const details = el("details");
-        details.append(el("summary", "", "詳しく見る"));
+        details.append(el("summary", "", tr("詳しく見る", "Details")));
         for (const [label, text, fix] of [
-          ["あなたの答え", r.transcript],
-          ["良かった点", r.goodPoints],
-          ["直す点", r.fixPoints],
-          ["添削", r.corrected, true],
-          ["自然な言い方", r.natural, true],
-          ["次に使える表現", r.phrases, true],
-          ["言い直しの一致率", Number.isFinite(r.readAloudAccuracy) ? `${r.readAloudAccuracy}%` : ""],
+          [tr("あなたの答え", "Your answer"), r.transcript],
+          [tr("良かった点", "Good points"), r.goodPoints],
+          [tr("直す点", "Points to fix"), r.fixPoints],
+          [tr("添削", "Corrected"), r.corrected, true],
+          [tr("自然な言い方", "More natural"), r.natural, true],
+          [tr("次に使える表現", "Phrases to use next time"), r.phrases, true],
+          [tr("言い直しの一致率", "Read-aloud match rate"), Number.isFinite(r.readAloudAccuracy) ? `${r.readAloudAccuracy}%` : ""],
         ]) {
           if (!text) continue;
           details.append(el("div", fix ? "lbl fix" : "lbl", label), el("p", "", text));
@@ -1270,7 +1421,8 @@
         $("top-chart").hidden = true;
         $("top-parts").hidden = true;
         $("top-list").replaceChildren(
-          el("p", "empty", "まだ結果がありません。アプリの「Topic」でお題について話すと、ここに点数の推移が表示されます。"));
+          el("p", "empty", tr("まだ結果がありません。アプリの「Topic」でお題について話すと、ここに点数の推移が表示されます。",
+            "No results yet. Speak on a topic in the app\u2019s \u201cTopic\u201d and your score trend appears here.")));
         return;
       }
       renderSummaryStats(topResults, "top");
@@ -1285,12 +1437,17 @@
         topResults = (await api.getTopicResults()).reverse();   // 古い順にする
         renderTopic();
       } catch (err) {
-        say($("top-msg"), friendlyError(err), "error");
+        say($("top-msg"), fe(err), "error");
       }
     }
 
     // ---------- リピーティング ----------
-    const REPEAT_UNIT = { unit: "%", what: "一致率", per: "日" };
+    const REPEAT_UNIT = {
+      unit: () => "%",
+      nth: (i) => tr(`${i}日目`, `Day ${i}`),
+      desc: (n, last, best) => tr(`${n}日分の一致率の推移（古い順）。最新は${last}%、最高は${best}%。`,
+        `Match rate over ${n} ${n === 1 ? "day" : "days"} (oldest first). Latest: ${last}%, best: ${best}%.`),
+    };
     const WEAK_LIMIT = 80;
     let repDays = [];   // 日ごとの平均 (古い順) — グラフ用
 
@@ -1305,7 +1462,8 @@
         $("rep-stats").hidden = true;
         $("rep-chart").hidden = true;
         $("rep-weak-sec").hidden = true;
-        list.append(el("p", "empty", "まだ結果がありません。アプリの「Repeat」で練習すると、ここに一致率が表示されます。"));
+        list.append(el("p", "empty", tr("まだ結果がありません。アプリの「Repeat」で練習すると、ここに一致率が表示されます。",
+          "No results yet. Practice in the app\u2019s \u201cRepeat\u201d and your match rate appears here.")));
         repDays = [];
         return;
       }
@@ -1317,16 +1475,16 @@
         byDay.get(r.date).push(r);
       }
       repDays = [...byDay.entries()].reverse().map(([date, rs]) => ({
-        date, createdAt: date + "T12:00:00", score: average(rs.map((r) => r.accuracy)), topic: `${rs.length}文`,
+        date, createdAt: date + "T12:00:00", score: average(rs.map((r) => r.accuracy)), topic: tr(`${rs.length}文`, `${rs.length} ${rs.length === 1 ? "sentence" : "sentences"}`),
       }));
 
       const box = $("rep-stats");
       box.replaceChildren();
       for (const [label, value] of [
-        ["練習した日", `${repDays.length}日`],
-        ["平均", `${average(results.map((r) => r.accuracy))}%`],
-        ["最新の日", `${repDays[repDays.length - 1].score}%`],
-        ["いちばん良い日", `${Math.max(...repDays.map((d) => d.score))}%`],
+        [tr("練習した日", "Days practiced"), tr(`${repDays.length}日`, String(repDays.length))],
+        [tr("平均", "Average"), `${average(results.map((r) => r.accuracy))}%`],
+        [tr("最新の日", "Latest day"), `${repDays[repDays.length - 1].score}%`],
+        [tr("いちばん良い日", "Best day"), `${Math.max(...repDays.map((d) => d.score))}%`],
       ]) {
         const tile = el("div", "stat");
         tile.append(el("div", "lbl", label), el("div", "val", value));
@@ -1347,19 +1505,19 @@
       for (const w of weak) {
         const row = el("div", "entry weak-row");
         row.append(el("span", "acc", `${w.latest.accuracy}%`), el("span", "text", w.latest.sentence),
-                   el("span", "times", `${w.times}回`));
+                   el("span", "times", tr(`${w.times}回`, `${w.times}\u00d7`)));
         $("rep-weak").append(row);
       }
       $("rep-weak-sec").hidden = weak.length === 0;
 
       // 日ごとの結果
       for (const [date, rs] of byDay) {
-        list.append(el("div", "day", `${date}  ·  平均 ${average(rs.map((r) => r.accuracy))}%`));
+        list.append(el("div", "day", `${date}  ·  ${tr("平均", "avg.")} ${average(rs.map((r) => r.accuracy))}%`));
         const card = el("div", "entry");
         for (const r of rs) {
           const row = el("div", "rep-row");
-          row.append(el("span", "acc" + (r.accuracy < WEAK_LIMIT ? " low" : ""), `${r.accuracy}%`), el("span", "text", r.mode === "shadow" ? "シャドーイング" : r.sentence));
-          if (r.mode === "shadow") row.append(el("span", "mode", "シャドー"));
+          row.append(el("span", "acc" + (r.accuracy < WEAK_LIMIT ? " low" : ""), `${r.accuracy}%`), el("span", "text", r.mode === "shadow" ? tr("シャドーイング", "Shadowing") : r.sentence));
+          if (r.mode === "shadow") row.append(el("span", "mode", tr("シャドー", "Shadow")));
           card.append(row);
         }
         list.append(card);
@@ -1371,7 +1529,7 @@
       try {
         renderRepeat(await api.getRepeatResults());
       } catch (err) {
-        say($("rep-msg"), friendlyError(err), "error");
+        say($("rep-msg"), fe(err), "error");
       }
     }
 
@@ -1381,7 +1539,14 @@
       plural: "単数・複数", verb_form: "動詞の形 (to / -ing)", word_order: "語順", word_choice: "単語の選び方",
       missing_word: "抜けた語", other: "その他",
     };
-    const SOURCE_LABELS = { diary: "日記", summary: "要約", topic: "お題" };
+    const MISTAKE_LABELS_EN = {
+      article: "Articles (a / the)", tense: "Tense", preposition: "Prepositions", agreement: "Subject-verb agreement",
+      plural: "Singular / plural", verb_form: "Verb forms (to / -ing)", word_order: "Word order", word_choice: "Word choice",
+      missing_word: "Missing words", other: "Other",
+    };
+    const mistakeLabel = (t) => (lang === "en" ? MISTAKE_LABELS_EN : MISTAKE_LABELS)[t] || t;
+    const sourceLabel = (k) => (lang === "en" ? { diary: "diary", summary: "summary", topic: "topic" }
+      : { diary: "日記", summary: "要約", topic: "お題" })[k] || k;
     let misDays = 30;
 
     function renderMistakes(stats) {
@@ -1389,7 +1554,8 @@
       list.replaceChildren();
       const rows = stats.slice().sort((a, b) => b.count - a.count || (b.previousCount ?? 0) - (a.previousCount ?? 0));
       if (rows.length === 0) {
-        list.append(el("p", "empty", "この期間のミスはまだありません。アプリで添削すると、ここに種類ごとの回数が出ます。"));
+        list.append(el("p", "empty", tr("この期間のミスはまだありません。アプリで添削すると、ここに種類ごとの回数が出ます。",
+          "No mistakes in this period yet. Once you correct something in the app, counts by type appear here.")));
         return;
       }
       const max = Math.max(1, ...rows.map((r) => r.count));
@@ -1400,24 +1566,24 @@
         const fill = el("span");
         fill.style.width = `${(r.count / max) * 100}%`;
         bar.append(fill);
-        const cnt = el("span", "cnt", `${r.count}回`);
+        const cnt = el("span", "cnt", tr(`${r.count}回`, `${r.count}\u00d7`));
         if (r.previousCount != null && r.count !== r.previousCount) {   // 90 日表示では前の期間のデータが無いので null
           const up = r.count > r.previousCount;
           const trend = el("span", up ? "trend up" : "trend down", up ? "↑" : "↓");
-          trend.title = `前の${misDays}日: ${r.previousCount}回`;
+          trend.title = tr(`前の${misDays}日: ${r.previousCount}回`, `Previous ${misDays} days: ${r.previousCount}`);
           cnt.append(trend);
         }
-        sum.append(el("span", "name", MISTAKE_LABELS[r.type] || r.type), bar, cnt);
+        sum.append(el("span", "name", mistakeLabel(r.type)), bar, cnt);
         row.append(sum);
 
         const ul = el("ul", "mis-ex");
         for (const e of r.examples) {
           const li = el("li");
           li.append(el("span", "wrong", e.wrong), document.createTextNode(" → "), el("span", "", e.fixed),
-                    el("span", "src", SOURCE_LABELS[e.source] || e.source));
+                    el("span", "src", sourceLabel(e.source)));
           ul.append(li);
         }
-        if (r.examples.length === 0) ul.append(el("li", "", "この期間の例はありません。"));
+        if (r.examples.length === 0) ul.append(el("li", "", tr("この期間の例はありません。", "No examples in this period.")));
         row.append(ul);
         list.append(row);
       });
@@ -1431,7 +1597,7 @@
       try {
         renderMistakes(await api.getMistakeStats(misDays));
       } catch (err) {
-        say($("mis-msg"), friendlyError(err), "error");
+        say($("mis-msg"), fe(err), "error");
       }
     }
 
@@ -1447,6 +1613,11 @@
       home: "学習ストリーク", diary: "日記の履歴", summary: "要約練習のスコア",
       topic: "お題スピーキング", repeat: "リピーティング", mistakes: "よくあるミス",
     };
+    const PAGES_EN = {
+      home: "Study Streak", diary: "Diary history", summary: "Summary scores",
+      topic: "Topic speaking", repeat: "Repeating", mistakes: "Common mistakes",
+    };
+    let currentPage = "home";
 
     function setMenu(open) {
       document.body.classList.toggle("menu-open", open);
@@ -1462,12 +1633,13 @@
 
     function showPage(name) {
       if (!PAGES[name]) name = "home";
+      currentPage = name;
       for (const page of document.querySelectorAll(".page")) page.hidden = page.dataset.page !== name;
       for (const item of document.querySelectorAll(".menu-item[data-page]")) {
         if (item.dataset.page === name) item.setAttribute("aria-current", "page");
         else item.removeAttribute("aria-current");
       }
-      $("page-title").textContent = PAGES[name];
+      $("page-title").textContent = tr(PAGES[name], PAGES_EN[name]);
       // 隠れているあいだは幅が測れないので、グラフは表示したときに描き直す
       if (name === "summary" && sumResults.length) {
         renderSummaryChart(sumResults);
@@ -1495,7 +1667,7 @@
 
     $("logout").addEventListener("click", async () => {
       setMenu(false);
-      try { await api.signOut(); } catch (err) { say($("app-msg"), friendlyError(err), "error"); }
+      try { await api.signOut(); } catch (err) { say($("app-msg"), fe(err), "error"); }
     });
 
     // ---------- ログイン状態に合わせて画面を切り替える ----------
@@ -1516,6 +1688,7 @@
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible" && !$("app").hidden) loadStreak();
     });
+    ready = true;
   </script>
 </body>
 </html>
