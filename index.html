@@ -172,6 +172,24 @@
       margin-left: -2.5px; border-radius: 50%; background: var(--text);
     }
     .cal-day.on.today::after { background: #1d2733; bottom: 9px; }
+    /* ---------- カレンダーの下: この月にやったこと (パソコンのときだけ表示) ---------- */
+    .cal-days { display: none; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .cal-days h3 { margin: 0 0 8px; }
+    .cal-days ul { margin: 0; padding: 0; list-style: none; columns: 2; column-gap: 24px; }
+    .cal-days li {
+      display: grid; grid-template-columns: 7.5em 1fr; gap: 10px; align-items: baseline;
+      padding: 6px 0; border-bottom: 1px dashed var(--line); break-inside: avoid; font-size: .85rem;
+    }
+    .cal-days .date { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .cal-days .date::before {
+      content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+      margin-right: 7px; vertical-align: 0; background: var(--flame);
+    }
+    .cal-days .what { display: flex; flex-wrap: wrap; gap: 2px 12px; color: var(--muted); }
+    .cal-days .what span::before {
+      content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+      margin-right: 5px; vertical-align: 1px; background: var(--c);
+    }
     .cal-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .78rem; color: var(--muted); margin-top: 8px; }
     .cal-legend span::before {
       content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%;
@@ -268,9 +286,14 @@
       }
       .menu-head { margin-top: 4px; }
 
-      /* ホーム: 連続日数 (左) とカレンダー (右) を横に並べる */
+      .cal-day { height: 64px; }
+      /* カレンダーの下の「この月にやったこと」(スマホでは出さない) */
+      .cal-days:not(:empty) { display: block; }
+    }
+    /* ホーム: 画面が十分広いときだけ、連続日数 (左) とカレンダー (右) を横に並べる */
+    @media (min-width: 1100px) {
       .page[data-page="home"] {
-        display: grid; grid-template-columns: 260px minmax(0, 1fr); grid-template-rows: auto 1fr;
+        display: grid; grid-template-columns: 220px minmax(0, 1fr); grid-template-rows: auto 1fr;
         column-gap: 28px; align-items: start;
       }
       .page[data-page="home"] .streak {
@@ -279,7 +302,8 @@
       }
       .page[data-page="home"] #app-msg { grid-column: 1; grid-row: 2; }
       .page[data-page="home"] .cal { grid-column: 2; grid-row: 1 / span 2; margin: 0; }
-      .cal-day { height: 64px; }
+    }
+    @media (min-width: 900px) {
 
       /* 一覧は 2列 (日付の見出しや「まだありません」は横いっぱい) */
       #diary-list, #sum-list, #top-list, #rep-list, #rep-weak, #mis-list {
@@ -432,6 +456,7 @@
           <span style="--c:#a3acb9" data-en="3 kinds">3種類</span>
           <span style="--c:#fcc419" data-en="All 4">4つ全部</span>
         </div>
+        <div id="cal-days" class="cal-days"></div>
         <p id="cal-msg" class="msg" role="status"></p>
       </section>
       </div>
@@ -880,6 +905,44 @@
         cell.append(el("span", "n", String(d.getDate())));
         grid.append(cell);
       }
+      renderMonthDays(byDate);
+    }
+
+    // カレンダーの下に、表示中の月にやったことを日付ごとに書く (新しい日が上。読み込み済みのデータを使うだけ)
+    const KIND_INFO = [
+      ["diary", "#e03131", "日記", "Diary"], ["summary", "#4dabf7", "要約練習", "Summary"],
+      ["topic", "#40c057", "お題", "Topic"], ["repeat", "#f06595", "リピーティング", "Repeating"],
+    ];
+    const FLAME_COLORS = { 4: "#fcc419", 3: "#a3acb9", 2: "#c27c3e" };
+    function renderMonthDays(byDate) {
+      const box = $("cal-days");
+      box.replaceChildren();
+      const days = [...byDate.values()]
+        .filter((a) => {
+          const d = new Date(a.date + "T00:00:00");
+          return d.getFullYear() === calMonth.getFullYear() && d.getMonth() === calMonth.getMonth()
+            && KIND_INFO.some(([k]) => a[k]);
+        })
+        .sort((x, y) => (x.date < y.date ? 1 : -1));
+      if (days.length === 0) return;
+      box.append(el("h3", "", tr("この月にやったこと", "What you did this month")));
+      const ul = el("ul");
+      for (const a of days) {
+        const done = KIND_INFO.filter(([k]) => a[k]);
+        const li = el("li");
+        const date = el("span", "date", new Date(a.date + "T00:00:00")
+          .toLocaleDateString(locale(), { month: "numeric", day: "numeric", weekday: "short" }));
+        date.style.setProperty("--flame", FLAME_COLORS[done.length] || done[0][1]);
+        const what = el("span", "what");
+        for (const [, color, ja, en] of done) {
+          const item = el("span", "", tr(ja, en));
+          item.style.setProperty("--c", color);
+          what.append(item);
+        }
+        li.append(date, what);
+        ul.append(li);
+      }
+      box.append(ul);
     }
 
     $("cal-prev").addEventListener("click", () => {
