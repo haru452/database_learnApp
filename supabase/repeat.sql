@@ -27,7 +27,7 @@ alter table public.repeat_results drop constraint if exists repeat_results_mode_
 alter table public.repeat_results add constraint repeat_results_mode_check check (mode in ('repeat', 'shadow'));
 alter table public.repeat_results drop constraint if exists repeat_results_source_check;
 alter table public.repeat_results add constraint repeat_results_source_check
-  check (source in ('diary', 'summary', 'topic', 'tatoeba', 'bbc'));
+  check (source in ('diary', 'summary', 'topic', 'tatoeba', 'bbc', 'youtube'));
 -- シャドーイングは点数だけ保存する (BBC の英文・自分が言った内容は保存しない。Discord にだけ送る)
 alter table public.repeat_results drop constraint if exists repeat_results_sentence_check;
 update public.repeat_results set sentence = '', heard = '' where mode = 'shadow' and (sentence <> '' or heard <> '');
@@ -184,7 +184,7 @@ begin
     v_text := case when v_mode = 'shadow' then '' else left(btrim(coalesce(v_item->>'sentence', '')), 300) end;
     continue when v_text = '' and v_mode <> 'shadow';
     v_src := coalesce(v_item->>'source', '');
-    if v_src not in ('diary', 'summary', 'topic', 'tatoeba', 'bbc') then v_src := 'tatoeba'; end if;
+    if v_src not in ('diary', 'summary', 'topic', 'tatoeba', 'bbc', 'youtube') then v_src := 'tatoeba'; end if;
     v_voice := coalesce(v_item->>'voice', '');
     if v_voice not in ('human', 'gemini', 'device') then v_voice := 'device'; end if;
 
