@@ -119,24 +119,38 @@ select count(*) as before_r from public.repeat_results \gset
 select pg_temp.check((select count(*) from public.repeat_results) = :before_r, 'rerun keeps results');
 select pg_temp.check(exists (select 1 from public.activity_days where kind = 'repeat'), 'rerun keeps repeat days');
 
--- 10) シャドーイング: mode 列 (既定 repeat)、source bbc、言えなかった文に shadow を混ぜない
+-- 10) シャドーイング: mode 列 (既定 repeat)、source bbc、英文と言った内容は保存しない (点数だけ)、言えなかった文に shadow を混ぜない
 select pg_temp.as_user(:'A');
 set role authenticated;
 select public.save_repeat_results('Asia/Tokyo',
-  '[{"sentence":"Shadow sentence about the weather today.","accuracy":50,"source":"bbc","voice":"human","mode":"shadow"},
+  '[{"sentence":"Shadow sentence about the weather today.","heard":"shadow sentence","accuracy":50,"source":"bbc","voice":"human","mode":"shadow"},
     {"sentence":"Plain repeat sentence for the mode test.","accuracy":90,"source":"tatoeba","voice":"human"},
     {"sentence":"Odd mode sentence for the test here.","accuracy":90,"source":"tatoeba","voice":"human","mode":"x"}]'::jsonb, null);
-select pg_temp.check((select mode from public.repeat_results where sentence like 'Shadow sentence%') = 'shadow', 'mode shadow saved');
-select pg_temp.check((select source from public.repeat_results where sentence like 'Shadow sentence%') = 'bbc', 'source bbc saved');
+select pg_temp.check((select count(*) from public.repeat_results where mode = 'shadow') = 1, 'mode shadow saved (even with text)');
+select pg_temp.check((select source from public.repeat_results where mode = 'shadow') = 'bbc', 'source bbc saved');
+select pg_temp.check((select sentence from public.repeat_results where mode = 'shadow') = '', 'shadow: sentence not stored');
+select pg_temp.check((select heard from public.repeat_results where mode = 'shadow') = '', 'shadow: heard not stored');
+select pg_temp.check((select accuracy from public.repeat_results where mode = 'shadow') = 50, 'shadow: score stored');
+select pg_temp.check(not exists (select 1 from public.repeat_results where sentence like 'Shadow sentence%'), 'BBC text nowhere in the table');
 select pg_temp.check((select mode from public.repeat_results where sentence like 'Plain repeat%') = 'repeat', 'mode defaults to repeat');
 select pg_temp.check((select mode from public.repeat_results where sentence like 'Odd mode%') = 'repeat', 'unknown mode -> repeat');
-select pg_temp.check(not exists (select 1 from public.get_my_repeat_sentences(5, 0) where sentence like 'Shadow sentence%'),
-                     'shadow sentences never come back as missed');
-select pg_temp.check((select mode from public.get_my_repeat_results(1000) where sentence like 'Shadow sentence%') = 'shadow',
-                     'results return mode');
+select pg_temp.check(not exists (select 1 from public.get_my_repeat_sentences(5, 0) where sentence = ''),
+                     'shadow rows never come back as missed');
+select pg_temp.check((select count(*) from public.get_my_repeat_results(1000) where mode = 'shadow' and sentence = '') = 1,
+                     'results return mode (no text for shadow)');
+select pg_temp.check(public.save_repeat_results('Asia/Tokyo', '[{"sentence":"","accuracy":10}]'::jsonb, null) = 0,
+                     'empty sentence still skipped for repeat');
 reset role;
+-- 前の版で英文付きで保存された shadow の行は、repeat.sql を実行し直すと英文が消える
+alter table public.repeat_results drop constraint repeat_results_sentence_check;   -- 前の版の状態に戻す
+update public.repeat_results set sentence = 'Earlier shadow text.' where mode = 'shadow';
+alter table public.repeat_results add constraint repeat_results_sentence_check check (char_length(sentence) between 1 and 300);
+insert into public.repeat_results (user_id, entry_date, sentence, heard, accuracy, source, voice, mode)
+values (:'A', current_date, 'Old shadow text from before.', 'old shadow', 60, 'bbc', 'human', 'shadow');
 \i ../repeat.sql
-select pg_temp.check((select count(*) from public.repeat_results where mode = 'shadow') = 1, 'rerun keeps mode column and rows');
+select pg_temp.check((select count(*) from public.repeat_results where mode = 'shadow') = 2, 'rerun keeps mode column and rows');
+select pg_temp.check(not exists (select 1 from public.repeat_results where mode = 'shadow' and (sentence <> '' or heard <> '')),
+                     'rerun removes old shadow text');
 
 -- 11) アプリはシャドーイングのとき p_version 2 を送る (mode の無い古いサーバーでは関数が見つからず、端末に一時保存される)
 select pg_temp.as_user(:'A');

@@ -28,6 +28,11 @@ alter table public.repeat_results add constraint repeat_results_mode_check check
 alter table public.repeat_results drop constraint if exists repeat_results_source_check;
 alter table public.repeat_results add constraint repeat_results_source_check
   check (source in ('diary', 'summary', 'topic', 'tatoeba', 'bbc'));
+-- シャドーイングは点数だけ保存する (BBC の英文・自分が言った内容は保存しない。Discord にだけ送る)
+alter table public.repeat_results drop constraint if exists repeat_results_sentence_check;
+update public.repeat_results set sentence = '', heard = '' where mode = 'shadow' and (sentence <> '' or heard <> '');
+alter table public.repeat_results add constraint repeat_results_sentence_check
+  check (char_length(sentence) <= 300 and (mode = 'shadow' or char_length(sentence) >= 1));
 
 create index if not exists repeat_results_user_created_idx
   on public.repeat_results (user_id, created_at desc, id desc);
@@ -173,18 +178,19 @@ begin
   for v_item in select value from jsonb_array_elements(p_results) loop
     exit when v_n >= 10;
     continue when jsonb_typeof(v_item) <> 'object';
-    v_text := left(btrim(coalesce(v_item->>'sentence', '')), 300);
-    continue when v_text = '';
-    v_src := coalesce(v_item->>'source', '');
-    if v_src not in ('diary', 'summary', 'topic', 'tatoeba', 'bbc') then v_src := 'tatoeba'; end if;
     v_mode := coalesce(v_item->>'mode', '');
     if v_mode not in ('repeat', 'shadow') then v_mode := 'repeat'; end if;
+    -- シャドーイングは点数だけ (英文・言った内容は送られてきても保存しない)
+    v_text := case when v_mode = 'shadow' then '' else left(btrim(coalesce(v_item->>'sentence', '')), 300) end;
+    continue when v_text = '' and v_mode <> 'shadow';
+    v_src := coalesce(v_item->>'source', '');
+    if v_src not in ('diary', 'summary', 'topic', 'tatoeba', 'bbc') then v_src := 'tatoeba'; end if;
     v_voice := coalesce(v_item->>'voice', '');
     if v_voice not in ('human', 'gemini', 'device') then v_voice := 'device'; end if;
 
     insert into public.repeat_results (user_id, entry_date, sentence, heard, accuracy, replays, source, voice, tatoeba_id, audio_id, mode)
     values (v_uid, v_date, v_text,
-            left(coalesce(v_item->>'heard', ''), 500),
+            case when v_mode = 'shadow' then '' else left(coalesce(v_item->>'heard', ''), 500) end,
             least(greatest(coalesce((v_item->>'accuracy')::numeric, 0), 0), 100)::integer,
             least(greatest(coalesce((v_item->>'replays')::numeric, 0), 0), 99)::integer,
             v_src, v_voice,

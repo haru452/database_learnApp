@@ -440,7 +440,7 @@
           <li><b>言い返す</b><code>Speak</code> を押して同じ文を言い、<code>Stop</code>。聞き取れなかったときは 0% にせず、もう一度言えます。</li>
           <li><b>確かめる</b>英文が枠の中に出て、言えた単語は緑、抜けた単語は赤、一致率（%）が出ます。<code>Try again</code> で言い直し、<code>Next</code> で次の文へ。</li>
           <li><b>まとめ</b>5 文が終わると平均が出ます。80% 未満の文は、次の練習で優先して出ます（このページの「苦手な文」）。</li>
-          <li><b>シャドーイング</b>上の <code>Shadowing: On</code> にすると、BBC Learning English「6 Minute English」の続いた 5 文で練習します。1 回目は聞くだけ（<code>Skip</code> で飛ばせます）、3・2・1 のあと 2 回目で声に重ねて話します。イヤホンを使ってください（付いていないと確認が出ます）。<code>Slow: On</code> でゆっくり。終わると <code>My voice</code>（自分の声）と <code>Original</code>（お手本）を聞き比べられます。結果には「シャドー」の印が付き、苦手な文には入りません。</li>
+          <li><b>シャドーイング</b>上の <code>Shadowing: On</code> にすると、BBC Learning English「6 Minute English」の続いた 5 文で練習します。1 回目は聞くだけ（<code>Skip</code> で飛ばせます）、3・2・1 のあと 2 回目で声に重ねて話します。イヤホンを使ってください（付いていないと確認が出ます）。<code>Slow: On</code> でゆっくり。終わると <code>My voice</code>（自分の声）と <code>Original</code>（お手本）を聞き比べられます。Web には点数だけを保存し（英文と自分が言った内容は Discord にだけ送ります）、結果には「シャドー」の印が付きます。苦手な文には入りません。</li>
         </ol>
         <p class="note">練習の途中でほかのタブへ移ると中断します。文と録音は Tatoeba（tatoeba.org）のもの、シャドーイングの音声は BBC Learning English のものです（どちらも個人の学習用）。</p>
       </details>
@@ -1305,7 +1305,7 @@
         const card = el("div", "entry");
         for (const r of rs) {
           const row = el("div", "rep-row");
-          row.append(el("span", "acc" + (r.accuracy < WEAK_LIMIT ? " low" : ""), `${r.accuracy}%`), el("span", "text", r.sentence));
+          row.append(el("span", "acc" + (r.accuracy < WEAK_LIMIT ? " low" : ""), `${r.accuracy}%`), el("span", "text", r.mode === "shadow" ? "シャドーイング" : r.sentence));
           if (r.mode === "shadow") row.append(el("span", "mode", "シャドー"));
           card.append(row);
         }

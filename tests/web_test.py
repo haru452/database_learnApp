@@ -87,7 +87,7 @@ def rr(i, d, sentence, acc):
 
 
 REPEAT = [   # 新しい順 (サーバーと同じ)
-    dict(rr(7, 0, "We talked about the weather today.", 40), mode="shadow", source="bbc"),   # シャドーは苦手な文に入れない
+    dict(rr(7, 0, "", 40), mode="shadow", source="bbc"),   # シャドーは点数だけ (英文なし)。苦手な文に入れない
     rr(6, 0, "Could you send me the file?", 90),     # 前は 60% → 今は 90% なので苦手ではない
     rr(5, 0, "I have lived here for three years.", 70),
     rr(4, -1, XSS + " is not a tag.", 50),
@@ -252,7 +252,10 @@ async def run(browser, scheme):
     check(len(weak) == 2 and "I have lived here" in weak[0] and "70%" in weak[0] and "2回" in weak[0],
           f"{scheme}: weak sentences (latest < 80%) {weak}")
     check(not any("Could you send" in w for w in weak), f"{scheme}: improved sentence not weak")
-    check(not any("weather" in w for w in weak), f"{scheme}: shadowing sentence not in weak sentences")
+    check(not any(w.startswith("40%") for w in weak), f"{scheme}: shadowing score not in weak sentences {weak}")
+    shadow_row = await page.locator("#rep-list .rep-row", has=page.locator(".mode")).inner_text()
+    check("40%" in shadow_row and "シャドーイング" in shadow_row,
+          f"{scheme}: shadow row shows score and a label instead of text {shadow_row!r}")
     marks = await page.locator("#rep-list .rep-row .mode").all_inner_texts()
     check(marks == ["シャドー"], f"{scheme}: shadow mark on the shadowing row only {marks}")
     check(await page.locator("#rep-list .day").count() == 3, f"{scheme}: results grouped by day")
