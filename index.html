@@ -243,6 +243,56 @@
     .mis-ex li { padding: 6px 0; border-top: 1px dashed var(--line); word-break: break-word; }
     .mis-ex .wrong { text-decoration: line-through; color: var(--muted); }
     .mis-ex .src { font-size: .72rem; color: var(--muted); margin-left: 6px; }
+    /* ---------- パソコン (広い画面) 用のレイアウト ----------
+       スマホ (899px 以下) は今までどおり 1列 + ハンバーガーメニュー。
+       900px 以上では、メニューを左に常に表示し、ページを横に広く使う。 */
+    @media (min-width: 900px) {
+      body { display: block; padding: 32px 24px; }
+      .card { margin: 0 auto; }
+      /* ログイン後だけ広くする (ログイン・設定の画面は細いまま) */
+      .card:has(#app:not([hidden])) { max-width: 1160px; padding: 28px 32px; }
+      #app:not([hidden]) {
+        display: grid; grid-template-columns: 230px minmax(0, 1fr); grid-template-rows: auto 1fr;
+        column-gap: 32px;
+      }
+      #app .topbar { grid-column: 2; grid-row: 1; margin-top: 0; }
+      #app .page { grid-column: 2; grid-row: 2; min-width: 0; }
+      /* ハンバーガーをやめて、サイドバーとして常に表示 */
+      .menu-btn, .menu-close, .menu-backdrop { display: none; }
+      .menu {
+        grid-column: 1; grid-row: 1 / -1; align-self: start; position: sticky; top: 32px; z-index: auto;
+        width: auto; padding: 0 24px 0 0; background: none; box-shadow: none;
+        transform: none; visibility: visible; transition: none;
+      }
+      .menu-head { margin-top: 4px; }
+
+      /* ホーム: 連続日数 (左) とカレンダー (右) を横に並べる */
+      .page[data-page="home"] {
+        display: grid; grid-template-columns: 260px minmax(0, 1fr); grid-template-rows: auto 1fr;
+        column-gap: 28px; align-items: start;
+      }
+      .page[data-page="home"] .streak {
+        grid-column: 1; grid-row: 1; padding: 28px 12px 22px;
+        border: 1px solid var(--line); border-radius: 14px;
+      }
+      .page[data-page="home"] #app-msg { grid-column: 1; grid-row: 2; }
+      .page[data-page="home"] .cal { grid-column: 2; grid-row: 1 / span 2; margin: 0; }
+      .cal-day { height: 64px; }
+
+      /* 一覧は 2列 (日付の見出しや「まだありません」は横いっぱい) */
+      #diary-list, #sum-list, #top-list, #rep-list, #rep-weak, #mis-list {
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; align-items: start;
+      }
+      #diary-list > .entry, #sum-list > .entry, #top-list > .entry,
+      #rep-list > .entry, #rep-weak > .entry, #mis-list > .mis-row { margin: 0; }
+      #diary-list > :not(.entry), #sum-list > :not(.entry), #top-list > :not(.entry),
+      #rep-list > :not(.entry), #rep-weak > :not(.entry), #mis-list > :not(.mis-row) { grid-column: 1 / -1; }
+      #diary-list > .day, #rep-list > .day { margin: 12px 0 0; }
+      #diary-list > .day:first-child, #rep-list > .day:first-child { margin-top: 0; }
+
+      /* 使い方の説明は読みやすい幅まで */
+      .howto { max-width: 760px; }
+    }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -1171,6 +1221,7 @@
           renderSummaryChart(topResults, "top");
           renderSummaryParts(topResults, "top", TOPIC_PARTS);
         }
+        if (repDays.length) renderSummaryChart(repDays, "rep", REPEAT_UNIT);
       }, 150);
     });
 
