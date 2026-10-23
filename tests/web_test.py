@@ -116,6 +116,7 @@ export function createClient() {
     },
     rpc: async (name, args) => {
       window.__calls = (window.__calls || []).concat([[name, args]]);
+      if (name === "get_my_week_streak") return { data: [{ weeks: 3, this_week_done: false }], error: null };
       if (name === "get_my_streak") return { data: [{ streak: 4, last_date: DATA.today, studied_today: true, best_streak: 9 }], error: null };
       if (name === "get_my_activity_days") return { data: DATA.activity, error: null };
       if (name === "get_my_topic_results") return { data: DATA.topics, error: null };
@@ -165,6 +166,16 @@ async def go(page, name):
 
 async def run(browser, scheme):
     page, errors = await open_page(browser, scheme)
+
+    # 週の連続 (いつも出す。今週がまだなら添える)
+    wk = await page.locator("#streak-weeks").inner_text()
+    check("3週連続" in wk and "今週はまだ" in wk, f"{scheme}: week streak shown {wk!r}")
+    await page.click(".lang-switch button[data-lang=en] >> visible=true")
+    await page.wait_for_timeout(400)
+    wk_en = await page.locator("#streak-weeks").inner_text()
+    check("3-week streak" in wk_en and "not this week yet" in wk_en, f"{scheme}: week streak in English {wk_en!r}")
+    await page.click(".lang-switch button[data-lang=ja] >> visible=true")
+    await page.wait_for_timeout(400)
 
     # カレンダー
     check(await page.locator(".cal-day.gold").count() == 1, f"{scheme}: one gold (4 kinds) day")

@@ -128,6 +128,16 @@ export function createStreakApi(supabase) {
     },
 
     /**
+     * 週の連続 (月曜〜日曜。1 日でも練習した週が、今週・先週から何週続いているか)。
+     * weeks.sql を実行していないサーバーではエラーになる (画面では出さない)。
+     * @returns {{ weeks: number, thisWeekDone: boolean }}
+     */
+    async getWeekStreak() {
+      const row = await callRpc("get_my_week_streak");
+      return { weeks: row ? row.weeks : 0, thisWeekDone: row ? row.this_week_done : false };
+    },
+
+    /**
      * 「学習完了」。昨日まで続いていれば +1、今日すでに完了していればそのまま、空いていれば 1。
      * @returns {{ streak: number, lastDate: string, alreadyDone: boolean, best: number }}
      */

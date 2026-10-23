@@ -58,6 +58,7 @@
     .streak .unit { font-size: 1rem; color: var(--muted); margin-top: 6px; }
     .streak .sub { font-size: .85rem; color: var(--muted); margin-top: 10px; min-height: 1.3em; }
     .streak .best { font-size: .85rem; color: var(--muted); margin-top: 6px; }
+    .streak .weeks { font-size: .95rem; font-weight: 600; margin-top: 8px; }
     h2 { font-size: 1rem; margin: 28px 0 4px; }
     .hint { font-size: .8rem; color: var(--muted); margin: 0 0 12px; }
     .day { font-size: .85rem; font-weight: 700; color: var(--muted); margin: 18px 0 8px; }
@@ -431,6 +432,7 @@
         <div class="unit" data-en="day streak">日連続</div>
         <div id="streak-sub" class="sub"></div>
         <div id="streak-best" class="best"></div>
+        <div id="streak-weeks" class="weeks" hidden></div>
       </div>
       <button id="complete" type="button" hidden style="display:none">今日の学習を完了する</button>
       <p id="app-msg" class="msg" role="status"></p>
@@ -813,6 +815,20 @@
       $("complete").textContent = studiedToday ? tr("今日は完了済みです", "Done for today") : tr("今日の学習を完了する", "Mark today as done");
     }
 
+    // 週の連続 (いつも出す)。weeks.sql を実行していないなどで読めなければ出さない
+    async function loadWeekStreak() {
+      const box = $("streak-weeks");
+      try {
+        const { weeks, thisWeekDone } = await api.getWeekStreak();
+        const pending = weeks > 0 && !thisWeekDone;
+        box.textContent = tr(`🗓 ${weeks}週連続` + (pending ? "（今週はまだ）" : ""),
+                             `🗓 ${weeks}-week streak` + (pending ? " (not this week yet)" : ""));
+        box.hidden = false;
+      } catch (err) {
+        box.hidden = true;
+      }
+    }
+
     async function loadStreak() {
       say($("app-msg"), "");
       try {
@@ -820,6 +836,7 @@
       } catch (err) {
         say($("app-msg"), fe(err), "error");
       }
+      loadWeekStreak();
       loadCalendar();
       loadDiary();
       loadSummary();
