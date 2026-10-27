@@ -281,6 +281,18 @@ export function createStreakApi(supabase) {
      * @returns {Array<{ type: string, count: number, previousCount: number|null,
      *                   examples: Array<{ wrong: string, fixed: string, source: string, date: string }> }>}
      */
+    async getWeakSounds(days) {
+      const { data, error } = await supabase.rpc("get_my_weak_sounds", { p_days: days });
+      if (error) throw error;
+      return (data || []).map((r) => ({
+        sound: r.sound,
+        label: r.label || "",
+        points: r.points,
+        previousPoints: r.previous_points,
+        words: Array.isArray(r.words) ? r.words : [],
+      }));
+    },
+
     async getMistakeStats(days) {
       const { data, error } = await supabase.rpc("get_my_mistake_stats", { p_days: days });
       if (error) throw error;

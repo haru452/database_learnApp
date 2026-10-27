@@ -72,6 +72,12 @@ def ex(wrong, fixed, source):
     return {"wrong": wrong, "fixed": fixed, "source": source, "date": day(0)}
 
 
+SOUNDS = [   # get_my_weak_sounds (points の多い順)
+    {"sound": "th", "label": "", "points": 9, "previous_points": 3, "words": ["think", "three"]},
+    {"sound": "other", "label": "z", "points": 6, "previous_points": 6, "words": []},
+    {"sound": "r_l", "label": "", "points": 2, "previous_points": 5, "words": [XSS]},
+]
+
 MISTAKES = [
     {"type": "tense", "count": 5, "previous_count": 2, "examples": [ex("I go yesterday", "I went yesterday", "topic")]},
     {"type": "article", "count": 4, "previous_count": 6, "examples": [ex("a apple", "an apple", "diary")]},
@@ -120,6 +126,7 @@ export function createClient() {
       if (name === "get_my_streak") return { data: [{ streak: 4, last_date: DATA.today, studied_today: true, best_streak: 9 }], error: null };
       if (name === "get_my_activity_days") return { data: DATA.activity, error: null };
       if (name === "get_my_topic_results") return { data: DATA.topics, error: null };
+      if (name === "get_my_weak_sounds") return { data: args.p_days === 90 ? DATA.sounds.map((m) => ({ ...m, previous_points: null })) : DATA.sounds, error: null };
       if (name === "get_my_mistake_stats") return { data: args.p_days === 90 ? DATA.mistakes.map((m) => ({ ...m, previous_count: null })) : DATA.mistakes, error: null };
       if (name === "get_my_summary_results") return { data: DATA.summary, error: null };
       if (name === "get_my_repeat_results") return { data: DATA.repeat, error: null };
@@ -127,7 +134,7 @@ export function createClient() {
     },
   };
 }
-""" % json.dumps({"today": day(0), "activity": ACTIVITY, "topics": TOPICS, "mistakes": MISTAKES, "summary": SUMMARY, "repeat": REPEAT})
+""" % json.dumps({"today": day(0), "activity": ACTIVITY, "topics": TOPICS, "mistakes": MISTAKES, "sounds": SOUNDS, "summary": SUMMARY, "repeat": REPEAT})
 
 failures = []
 
@@ -243,6 +250,16 @@ async def run(browser, scheme):
     check("I go yesterday" in ex_text and "I went yesterday" in ex_text and "お題" in ex_text, f"{scheme}: example with source")
     await rows.nth(5).locator("summary").click()
     check(await page.evaluate("window.__xss") is None, f"{scheme}: no script injection in mistakes")
+    # 苦手な発音
+    check(await page.locator("#snd-sec h3").inner_text() == "苦手な発音", f"{scheme}: weak sounds heading")
+    snames = await page.locator("#snd-list .snd-row .name").all_inner_texts()
+    check(snames == ["TH の音", "その他: z", "R と L"], f"{scheme}: weak sound rows {snames}")
+    check(await page.locator("#snd-list .snd-row").nth(0).locator(".trend.up").count() == 1, f"{scheme}: th up")
+    check(await page.locator("#snd-list .snd-row").nth(1).locator(".trend").count() == 0, f"{scheme}: same -> no arrow")
+    check(await page.locator("#snd-list .snd-row").nth(2).locator(".trend.down").count() == 1, f"{scheme}: r_l down")
+    w0 = await page.locator("#snd-list .snd-row").nth(0).inner_text()
+    check("think" in w0 and "three" in w0 and "9" in w0, f"{scheme}: points and words {w0!r}")
+    check(await page.evaluate("window.__xss") is None, f"{scheme}: no script injection in weak sounds")
     for days in (7, 30, 90):
         await page.click(f"#mis-period button[data-days='{days}']")
         await page.wait_for_timeout(150)
@@ -251,6 +268,9 @@ async def run(browser, scheme):
     check(await page.locator("#mis-list .trend").count() == 0, f"{scheme}: 90 days hides trend arrows (no previous data)")
     calls = [c[1]["p_days"] for c in await page.evaluate("window.__calls") if c[0] == "get_my_mistake_stats"]
     check(calls[-3:] == [7, 30, 90], f"{scheme}: period buttons call p_days {calls}")
+    scalls = [c[1]["p_days"] for c in await page.evaluate("window.__calls") if c[0] == "get_my_weak_sounds"]
+    check(scalls[-3:] == [7, 30, 90], f"{scheme}: weak sounds follow the period {scalls}")
+    check(await page.locator("#snd-list .trend").count() == 0, f"{scheme}: 90 days hides sound arrows")
     await page.screenshot(path=f"/tmp/web_mistakes_{scheme}.png", full_page=True)
 
     # リピーティング

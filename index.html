@@ -260,6 +260,19 @@
     .mis-row .trend { margin-left: 4px; font-weight: 700; }
     .mis-row .trend.up { color: var(--error); }
     .mis-row .trend.down { color: var(--ok); }
+    /* 苦手な発音 (よくあるミスと同じ見た目) */
+    #snd-sec { margin-top: 24px; }
+    .snd-row { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 0 0 8px; }
+    .snd-row .head { display: grid; grid-template-columns: 8em 1fr auto; gap: 10px; align-items: center; }
+    .snd-row .name { font-size: .85rem; font-weight: 600; }
+    .snd-row .bar { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+    .snd-row .bar span { display: block; height: 100%; border-radius: 5px; background: var(--accent); }
+    .snd-row .cnt { font-size: .85rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .snd-row .trend { margin-left: 4px; font-weight: 700; }
+    .snd-row .trend.up { color: var(--error); }
+    .snd-row .trend.down { color: var(--ok); }
+    .snd-row .words { margin-top: 6px; font-size: .8rem; color: var(--muted); word-break: break-word; }
+    html[lang="en"] .snd-row .head { grid-template-columns: 10.5em 1fr auto; }
     .mis-ex { margin: 10px 0 0; padding: 0; list-style: none; font-size: .85rem; }
     .mis-ex li { padding: 6px 0; border-top: 1px dashed var(--line); word-break: break-word; }
     .mis-ex .wrong { text-decoration: line-through; color: var(--muted); }
@@ -626,6 +639,12 @@
       </div>
       <div id="mis-list"></div>
       <p id="mis-msg" class="msg" role="status"></p>
+      <section id="snd-sec">
+        <h3 data-en="Weak sounds">苦手な発音</h3>
+        <p class="hint" data-en="Sounds from pronunciation checks (3 points) and words you couldn't say in read-aloud and repeating (1 point).">発音チェックの判定（3 点）と、言い直し・リピーティングで言えなかった単語（1 点）から数えています。</p>
+        <div id="snd-list"></div>
+        <p id="snd-msg" class="msg" role="status"></p>
+      </section>
       </div>
     </section>
   </main>
@@ -1669,7 +1688,62 @@
       });
     }
 
+    // ---------- 苦手な発音 (よくあるミスの期間ボタンに合わせる) ----------
+    const SOUND_LABELS = {
+      th: "TH の音", r_l: "R と L", v_b: "V と B", f_h: "F と H", s_sh: "S と SH", vowel: "あいまいな母音",
+      long_short: "長い母音と短い母音", final_consonant: "語尾の子音", extra_vowel: "余計な母音 (カタカナ発音)", stress: "強勢・リズム",
+    };
+    const SOUND_LABELS_EN = {
+      th: "TH", r_l: "R / L", v_b: "V / B", f_h: "F / H", s_sh: "S / SH", vowel: "Vowels (\u00e6 \u028c \u0251 \u0259)",
+      long_short: "Long / short vowels", final_consonant: "Final consonants", extra_vowel: "Extra vowels", stress: "Word stress",
+    };
+    const soundLabel = (s) => s.sound === "other"
+      ? tr(`その他: ${s.label}`, `Other: ${s.label}`)
+      : (lang === "en" ? SOUND_LABELS_EN : SOUND_LABELS)[s.sound] || s.sound;
+
+    function renderWeakSounds(rows) {
+      const list = $("snd-list");
+      list.replaceChildren();
+      if (rows.length === 0) {
+        list.append(el("p", "empty", tr("発音チェックや言い直し・リピーティングをすると、ここに苦手な発音が出ます。",
+          "Do pronunciation checks, read-aloud or repeating practice, and your weak sounds appear here.")));
+        return;
+      }
+      const max = Math.max(1, ...rows.map((r) => r.points));
+      for (const r of rows) {
+        const row = el("div", "snd-row");
+        const head = el("div", "head");
+        const bar = el("div", "bar");
+        const fill = el("span");
+        fill.style.width = `${(r.points / max) * 100}%`;
+        bar.append(fill);
+        const cnt = el("span", "cnt", tr(`${r.points}点`, `${r.points} pts`));
+        if (r.previousPoints != null && r.points !== r.previousPoints) {   // 90 日表示では null
+          const up = r.points > r.previousPoints;
+          const trend = el("span", up ? "trend up" : "trend down", up ? "↑" : "↓");
+          trend.title = tr(`前の${misDays}日: ${r.previousPoints}点`, `Previous ${misDays} days: ${r.previousPoints} pts`);
+          cnt.append(trend);
+        }
+        head.append(el("span", "name", soundLabel(r)), bar, cnt);
+        row.append(head);
+        if (r.words.length > 0) row.append(el("div", "words", tr("例: ", "e.g. ") + r.words.join(", ")));
+        list.append(row);
+      }
+    }
+
+    async function loadWeakSounds() {
+      say($("snd-msg"), "");
+      try {
+        renderWeakSounds(await api.getWeakSounds(misDays));
+      } catch (err) {
+        // sounds.sql を実行していないなど: 欄は空のまま、理由だけ出す
+        $("snd-list").replaceChildren();
+        say($("snd-msg"), fe(err), "error");
+      }
+    }
+
     async function loadMistakes() {
+      loadWeakSounds();
       say($("mis-msg"), "");
       for (const b of $("mis-period").querySelectorAll("button")) {
         b.setAttribute("aria-pressed", String(Number(b.dataset.days) === misDays));
