@@ -30,6 +30,8 @@ select pg_temp.check(public._sound_label('NG sounds') = 'ng', 'label: NG sounds 
 select pg_temp.check(public._sound_label('(x)') = '', 'label: only brackets -> empty');
 select pg_temp.check(public._sound_label('  Dark   L / clear-L  ') = 'dark l / clear-l', 'label: spaces, / and - kept');
 select pg_temp.check(char_length(public._sound_label(repeat('ab ', 30))) <= 30, 'label: 30 chars max');
+select pg_temp.check(public._sound_label(E'Dark\tL') = 'dark l', 'label: tab is a space (same as the app)');
+select pg_temp.check(public._sound_label('Dark'||chr(160)||'L') = 'dark l', 'label: no-break space is a space');
 
 -- 2) 保存の丸め
 select pg_temp.as_user(:'A');

@@ -37,10 +37,12 @@ as $$
   select btrim(left(btrim(regexp_replace(
            regexp_replace(
              regexp_replace(
-               regexp_replace(lower(coalesce(p_name, '')), '\([^)]*\)', ' ', 'g'),
-               '\msounds?\M', ' ', 'g'),
+               regexp_replace(
+                 regexp_replace(lower(coalesce(p_name, '')), '\([^)]*\)', ' ', 'g'),
+                 '\msounds?\M', ' ', 'g'),
+               '[\s\u00a0]', ' ', 'g'),          -- タブ・改行・幅のある空白は普通の空白 (アプリと同じ)
              '[^a-z0-9 /-]', '', 'g'),
-           '\s+', ' ', 'g')), 30))
+           ' +', ' ', 'g')), 30))
 $$;
 
 drop function if exists public.save_pronunciation_issues(text, jsonb, timestamptz);
