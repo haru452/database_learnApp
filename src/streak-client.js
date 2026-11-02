@@ -162,7 +162,7 @@ export function createStreakApi(supabase) {
       const { data, error } = await supabase.rpc("get_my_activity_days", { p_from: from, p_to: to });
       if (error) throw error;
       return (data || []).map((r) => ({
-        date: r.day, diary: !!r.diary, summary: !!r.summary, topic: !!r.topic, repeat: !!r.repeat,
+        date: r.day, diary: !!r.diary, summary: !!r.summary, topic: !!r.topic, repeat: !!r.repeat, vocab: !!r.vocab,
       }));
     },
 

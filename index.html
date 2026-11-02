@@ -164,6 +164,7 @@
     .cal-day.summary { --flame: #4dabf7; }
     .cal-day.topic   { --flame: #40c057; }
     .cal-day.repeat  { --flame: #f06595; }
+    .cal-day.vocab   { --flame: #845ef7; }
     .cal-day.bronze  { --flame: #c27c3e; }
     .cal-day.silver  { --flame: #a3acb9; }
     .cal-day.gold    { --flame: #fcc419; }
@@ -467,9 +468,10 @@
           <span style="--c:#4dabf7" data-en="Summary">要約練習</span>
           <span style="--c:#40c057" data-en="Topic">お題</span>
           <span style="--c:#f06595" data-en="Repeating">リピーティング</span>
+          <span style="--c:#845ef7" data-en="Vocabulary">単語帳</span>
           <span style="--c:#c27c3e" data-en="2 kinds">2種類</span>
-          <span style="--c:#a3acb9" data-en="3 kinds">3種類</span>
-          <span style="--c:#fcc419" data-en="All 4">4つ全部</span>
+          <span style="--c:#a3acb9" data-en="3-4 kinds">3〜4種類</span>
+          <span style="--c:#fcc419" data-en="All 5">5つ全部</span>
         </div>
         <div id="cal-days" class="cal-days"></div>
         <p id="cal-msg" class="msg" role="status"></p>
@@ -864,7 +866,7 @@
       loadMistakes();
     }
 
-    // ---------- やった日カレンダー (日記 = 赤 / 要約 = 青 / お題 = 緑 / リピーティング = ピンク / 2種類 = 銅 / 3種類 = 銀 / 4つ全部 = 金) ----------
+    // ---------- やった日カレンダー (日記 = 赤 / 要約 = 青 / お題 = 緑 / リピーティング = ピンク / 単語帳 = 紫 / 2種類 = 銅 / 3〜4種類 = 銀 / 5つ全部 = 金) ----------
     const FLAME_SVG =
       '<svg class="flame" viewBox="0 0 40 46" aria-hidden="true"><path d="M20 0c1.2 3.6 3 6 4.6 8.4C25.8 6.6 27.6 5 29.2 4c4.6 5.6 7.8 12.6 7.8 21.5C37 36.6 29.4 45 20 45S3 36.6 3 25.5C3 16.6 6.2 9.6 10.8 4c1.6 1 3.4 2.6 4.6 4.4C17 6 18.8 3.6 20 0z"/></svg>';
     let calMonth = null;   // 表示中の月の1日
@@ -922,12 +924,12 @@
 
         let label = lang === "en" ? d.toLocaleDateString("en-US", { month: "long", day: "numeric" }) : `${d.getMonth() + 1}月${d.getDate()}日`;
         const kinds = a ? [a.diary && tr("日記", "diary"), a.summary && tr("要約練習", "summary"), a.topic && tr("お題", "topic"),
-                           a.repeat && tr("リピーティング", "repeating")]
+                           a.repeat && tr("リピーティング", "repeating"), a.vocab && tr("単語帳", "vocabulary")]
           .filter(Boolean) : [];
         if (kinds.length > 0) {
-          // 1種類 = その色 / 2種類 = 銅 / 3種類 = 銀 / 4つ全部 = 金
-          const kind = kinds.length === 4 ? "gold" : kinds.length === 3 ? "silver" : kinds.length === 2 ? "bronze"
-            : a.diary ? "diary" : a.summary ? "summary" : a.topic ? "topic" : "repeat";
+          // 1種類 = その色 / 2種類 = 銅 / 3〜4種類 = 銀 / 5つ全部 = 金
+          const kind = kinds.length >= 5 ? "gold" : kinds.length >= 3 ? "silver" : kinds.length === 2 ? "bronze"
+            : a.diary ? "diary" : a.summary ? "summary" : a.topic ? "topic" : a.repeat ? "repeat" : "vocab";
           cell.classList.add("on", kind);
           // 同じ週の中で、前後の日もやっていれば帯でつなぐ
           const prev = byDate.get(isoDate(addDays(d, -1)));
@@ -948,8 +950,9 @@
     const KIND_INFO = [
       ["diary", "#e03131", "日記", "Diary"], ["summary", "#4dabf7", "要約練習", "Summary"],
       ["topic", "#40c057", "お題", "Topic"], ["repeat", "#f06595", "リピーティング", "Repeating"],
+      ["vocab", "#845ef7", "単語帳", "Vocabulary"],
     ];
-    const FLAME_COLORS = { 4: "#fcc419", 3: "#a3acb9", 2: "#c27c3e" };
+    const FLAME_COLORS = { 5: "#fcc419", 4: "#a3acb9", 3: "#a3acb9", 2: "#c27c3e" };
     function renderMonthDays(byDate) {
       const box = $("cal-days");
       box.replaceChildren();

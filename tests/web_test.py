@@ -30,7 +30,11 @@ srv = socketserver.TCPServer(("127.0.0.1", 0), Quiet)
 PORT = srv.server_address[1]
 threading.Thread(target=srv.serve_forever, daemon=True).start()
 
-TODAY = (datetime.datetime.now() - datetime.timedelta(hours=3)).date()
+# 「今日」は今月の 15 日に固定し、ブラウザの時計もそこにする
+# (月の初めに走らせると、数日前の記録が前の月に入ってカレンダーに出ないため)
+_real = (datetime.datetime.now() - datetime.timedelta(hours=3)).date()
+TODAY = _real.replace(day=15)
+NOW = datetime.datetime.combine(TODAY, datetime.time(12, 0))
 
 
 def day(n):
@@ -38,12 +42,14 @@ def day(n):
 
 
 ACTIVITY = [
-    {"day": day(0), "diary": True, "summary": True, "topic": True, "repeat": True},     # 金 (4つ全部)
-    {"day": day(-1), "diary": True, "summary": False, "topic": True, "repeat": False},  # 銅 (2種類)
-    {"day": day(-2), "diary": False, "summary": False, "topic": True, "repeat": False}, # 緑 (お題だけ)
-    {"day": day(-3), "diary": True, "summary": False, "topic": False, "repeat": False}, # オレンジ
-    {"day": day(-4), "diary": True, "summary": True, "topic": True, "repeat": False},   # 銀 (3種類)
-    {"day": day(-5), "diary": False, "summary": False, "topic": False, "repeat": True}, # ピンク (リピーティングだけ)
+    {"day": day(0), "diary": True, "summary": True, "topic": True, "repeat": True, "vocab": True},       # 金 (5つ全部)
+    {"day": day(-1), "diary": True, "summary": False, "topic": True, "repeat": False, "vocab": False},  # 銅 (2種類)
+    {"day": day(-2), "diary": False, "summary": False, "topic": True, "repeat": False, "vocab": False}, # 緑 (お題だけ)
+    {"day": day(-3), "diary": True, "summary": False, "topic": False, "repeat": False, "vocab": False}, # 赤 (日記だけ)
+    {"day": day(-4), "diary": True, "summary": True, "topic": True, "repeat": False, "vocab": False},   # 銀 (3種類)
+    {"day": day(-5), "diary": False, "summary": False, "topic": False, "repeat": True, "vocab": False}, # ピンク (リピーティングだけ)
+    {"day": day(-6), "diary": True, "summary": True, "topic": True, "repeat": True, "vocab": False},    # 銀 (4種類)
+    {"day": day(-7), "diary": False, "summary": False, "topic": False, "repeat": False, "vocab": True}, # 紫 (単語帳だけ)
 ]
 
 XSS = '<img src=x onerror="window.__xss=1">'
@@ -150,6 +156,7 @@ async def open_page(browser, scheme):
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
+    await page.clock.set_system_time(NOW)
     await page.route("https://esm.sh/**", lambda r: r.fulfill(body=FAKE, content_type="application/javascript"))
     await page.route("**/config.js", lambda r: r.fulfill(
         body='export const SUPABASE_URL="https://x.supabase.co";export const SUPABASE_ANON_KEY="k";',
@@ -186,8 +193,8 @@ async def run(browser, scheme):
     await page.wait_for_timeout(400)
 
     # カレンダー
-    check(await page.locator(".cal-day.gold").count() == 1, f"{scheme}: one gold (4 kinds) day")
-    check(await page.locator(".cal-day.silver").count() == 1, f"{scheme}: one silver (3 kinds) day")
+    check(await page.locator(".cal-day.gold").count() == 1, f"{scheme}: one gold (all 5 kinds) day")
+    check(await page.locator(".cal-day.silver").count() == 2, f"{scheme}: two silver (3-4 kinds) days")
     check(await page.locator(".cal-day.bronze").count() == 1, f"{scheme}: one bronze (2 kinds) day")
     check(await page.locator(".cal-day.both").count() == 0, f"{scheme}: no purple any more")
     check(await page.locator(".cal-day.repeat").count() == 1, f"{scheme}: one repeat-only (pink) day")
@@ -197,8 +204,17 @@ async def run(browser, scheme):
     check(diary_color == "#e03131", f"{scheme}: diary flame is red ({diary_color})")
     diary_dot = await page.evaluate("[...document.querySelectorAll('.cal-legend span')].find(s => s.textContent === '日記').style.getPropertyValue('--c')")
     check(diary_dot == "#e03131", f"{scheme}: diary legend dot is red ({diary_dot})")
+    check(await page.locator(".cal-day.vocab").count() == 1, f"{scheme}: one vocabulary-only (purple) day")
+    vocab_color = await page.evaluate("getComputedStyle(document.querySelector('.cal-day.vocab')).getPropertyValue('--flame').trim()")
+    check(vocab_color == "#845ef7", f"{scheme}: vocabulary flame is purple ({vocab_color})")
+    vocab_dot = await page.evaluate("[...document.querySelectorAll('.cal-legend span')].find(s => s.textContent === '単語帳')?.style.getPropertyValue('--c')")
+    check(vocab_dot == "#845ef7", f"{scheme}: vocabulary legend dot is purple ({vocab_dot})")
     legend = await page.inner_text(".cal-legend")
-    check(all(w in legend for w in ("お題", "リピーティング", "2種類", "3種類", "4つ全部")), f"{scheme}: legend {legend}")
+    check(all(w in legend for w in ("お題", "リピーティング", "単語帳", "2種類", "3〜4種類", "5つ全部")), f"{scheme}: legend {legend}")
+    gold_label = await page.locator(".cal-day.gold").get_attribute("aria-label")
+    check("単語帳" in gold_label, f"{scheme}: gold day lists vocabulary ({gold_label})")
+    month_days = await page.evaluate("document.getElementById('cal-days').textContent")
+    check("単語帳" in month_days, f"{scheme}: what-you-did list has vocabulary")
     await page.screenshot(path=f"/tmp/web_home_{scheme}.png")
 
     # メニュー
