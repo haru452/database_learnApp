@@ -24,6 +24,7 @@
 | `supabase/repeat.sql` | リピーティング（聞いた英文を言い返す練習）の結果のテーブルと関数（追加分） |
 | `supabase/weeks.sql` | 週の連続（月曜〜日曜、1 日でも練習した週が何週続いているか）の関数（追加分） |
 | `supabase/sounds.sql` | 苦手な発音（発音チェックの判定と言えなかった単語から数える）の表と関数（追加分） |
+| `supabase/vocab.sql` | 単語帳（アプリの Vocab）を 1 回終えた日を連続記録・カレンダーに数える関数（追加分） |
 | `supabase/tests/` | SQL のテスト（手元の PostgreSQL で `psql -f topic_test.sql`） |
 | `tests/web_test.py` | Web 版のテスト（Playwright。Supabase はダミーに差し替える） |
 | `src/streak-client.js` | ログイン・ストリーク・日記を呼ぶモジュール（どのフレームワークでも使える） |
@@ -60,7 +61,7 @@
 
 1. [supabase.com](https://supabase.com) で **New project** を作る（Region は `Northeast Asia (Tokyo)` がおすすめ）。データベースのパスワードは控えておく。
 2. 左メニューの **SQL Editor** → **New query** を開き、`supabase/schema.sql` の中身をすべて貼り付けて **Run**。`Success` と出ればよい（何度実行しても問題ない）。
-   続けて、`supabase/summary.sql` → `supabase/topic.sql` → `supabase/repeat.sql` → `supabase/weeks.sql` → `supabase/sounds.sql` の順に、同じように **Run** する（要約練習・お題スピーキング・リピーティングの結果と、よくあるミス・週の連続・苦手な発音を保存・表示するため）。順番を変えるとエラーになる。
+   続けて、`supabase/summary.sql` → `supabase/topic.sql` → `supabase/repeat.sql` → `supabase/weeks.sql` → `supabase/sounds.sql` → `supabase/vocab.sql` の順に、同じように **Run** する（要約練習・お題スピーキング・リピーティングの結果と、よくあるミス・週の連続・苦手な発音・単語帳の日を保存・表示するため）。順番を変えるとエラーになる。
 3. **Authentication → Sign In / Providers → Email** が有効になっているか確認する。
    - **Confirm email**（メール確認）：本番は ON のまま。ON の場合、登録後に届く確認メールのリンクを開くまでログインできない。
    - 家族や自分だけで使う場合は、アカウントを作ったあとに **Allow new users to sign up** をオフにすると、知らない人が登録できなくなる。

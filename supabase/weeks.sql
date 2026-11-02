@@ -1,6 +1,6 @@
 -- 週の連続 (月曜〜日曜。1 週間に 1 日でも練習した週が、今週・先週から何週続いているか)
 -- schema.sql / topic.sql / repeat.sql の後に、Supabase の SQL Editor で 1 回実行する (何度実行してもよい)。
--- 数えるもとは activity_days (日記・要約・お題・リピーティング・シャドーイングをやった日。日は夜 3 時区切り)。
+-- 数えるもとは activity_days (日記・要約・お題・リピーティング・シャドーイング・単語帳をやった日。日は夜 3 時区切り)。
 
 drop function if exists public._week_streak(uuid, date);
 drop function if exists public.get_my_week_streak(text);

@@ -35,11 +35,11 @@ create table if not exists public.activity_days (
   kind    text not null,
   primary key (user_id, day, kind)
 );
--- 種類: diary (日記) / summary (要約練習) / topic (お題スピーキング、topic.sql) / repeat (リピーティング、repeat.sql)
--- (topic.sql・repeat.sql も同じ 4 種類で付け直す。どれを後から実行しても、ほかの種類の行が制約違反にならないように)
+-- 種類: diary (日記) / summary (要約練習) / topic (お題スピーキング、topic.sql) / repeat (リピーティング、repeat.sql) / vocab (単語帳、vocab.sql)
+-- (topic.sql・repeat.sql・vocab.sql も同じ 5 種類で付け直す。どれを後から実行しても、ほかの種類の行が制約違反にならないように)
 alter table public.activity_days drop constraint if exists activity_days_kind_check;
 alter table public.activity_days add constraint activity_days_kind_check
-  check (kind in ('diary', 'summary', 'topic', 'repeat'));
+  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab'));
 alter table public.activity_days enable row level security;
 
 drop policy if exists "activity_days_select_own" on public.activity_days;
@@ -418,9 +418,10 @@ $$;
 -- ============================================================
 drop function if exists public.get_my_activity_days(date, date);
 
--- 期間内のやった日 (1日1行。日記 / 要約練習 / お題スピーキング / リピーティングをやったか)。一度に読むのは約1年分まで
+-- 期間内のやった日 (1日1行。日記 / 要約練習 / お題スピーキング / リピーティング / 単語帳をやったか)。一度に読むのは約1年分まで
+-- (vocab.sql にも同じ定義がある。どちらを後から実行しても同じ)
 create function public.get_my_activity_days(p_from date, p_to date)
-returns table (day date, diary boolean, summary boolean, topic boolean, repeat boolean)
+returns table (day date, diary boolean, summary boolean, topic boolean, repeat boolean, vocab boolean)
 language sql
 stable
 security invoker
@@ -430,7 +431,8 @@ as $$
          bool_or(a.kind = 'diary')   as diary,
          bool_or(a.kind = 'summary') as summary,
          bool_or(a.kind = 'topic')   as topic,
-         bool_or(a.kind = 'repeat')  as repeat
+         bool_or(a.kind = 'repeat')  as repeat,
+         bool_or(a.kind = 'vocab')   as vocab
   from public.activity_days a
   where a.user_id = (select auth.uid())
     and a.day between p_from and least(p_to, p_from + 400)
