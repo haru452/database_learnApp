@@ -4,10 +4,10 @@
 --   何度実行しても壊れない。単語帳そのもの (単語・復習の履歴) はアプリの端末の中だけ。
 -- ============================================================
 
--- 「やった日」の種類 (schema.sql・topic.sql・repeat.sql と同じ 5 種類)
+-- 「やった日」の種類 (schema.sql・topic.sql・repeat.sql・answer.sql と同じ 6 種類)
 alter table public.activity_days drop constraint if exists activity_days_kind_check;
 alter table public.activity_days add constraint activity_days_kind_check
-  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab'));
+  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer'));
 
 -- やった日カレンダー (schema.sql と同じ定義。vocab.sql だけ後から実行しても単語帳の列が出るように)
 drop function if exists public.get_my_activity_days(date, date);

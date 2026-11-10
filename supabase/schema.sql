@@ -36,10 +36,10 @@ create table if not exists public.activity_days (
   primary key (user_id, day, kind)
 );
 -- 種類: diary (日記) / summary (要約練習) / topic (お題スピーキング、topic.sql) / repeat (リピーティング、repeat.sql) / vocab (単語帳、vocab.sql)
--- (topic.sql・repeat.sql・vocab.sql も同じ 5 種類で付け直す。どれを後から実行しても、ほかの種類の行が制約違反にならないように)
+-- (topic.sql・repeat.sql・vocab.sql・answer.sql も同じ 6 種類で付け直す。どれを後から実行しても、ほかの種類の行が制約違反にならないように)
 alter table public.activity_days drop constraint if exists activity_days_kind_check;
 alter table public.activity_days add constraint activity_days_kind_check
-  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab'));
+  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer'));
 alter table public.activity_days enable row level security;
 
 drop policy if exists "activity_days_select_own" on public.activity_days;

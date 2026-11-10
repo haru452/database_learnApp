@@ -37,10 +37,10 @@ alter table public.repeat_results add constraint repeat_results_sentence_check
 create index if not exists repeat_results_user_created_idx
   on public.repeat_results (user_id, created_at desc, id desc);
 
--- 「やった日」の種類 (schema.sql・topic.sql・vocab.sql と同じ 5 種類)
+-- 「やった日」の種類 (schema.sql・topic.sql・vocab.sql・answer.sql と同じ 6 種類)
 alter table public.activity_days drop constraint if exists activity_days_kind_check;
 alter table public.activity_days add constraint activity_days_kind_check
-  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab'));
+  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer'));
 
 alter table public.repeat_results enable row level security;
 revoke all on public.repeat_results from anon, authenticated;

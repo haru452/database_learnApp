@@ -274,6 +274,17 @@
     .snd-row .trend.down { color: var(--ok); }
     .snd-row .words { margin-top: 6px; font-size: .8rem; color: var(--muted); word-break: break-word; }
     html[lang="en"] .snd-row .head { grid-template-columns: 10.5em 1fr auto; }
+    /* 単語の発音・短い答え: 1 回ずつの行 (src/practice-logs.js) */
+    .log-row { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 0 0 8px; }
+    .log-row .head { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: baseline; }
+    .log-row .word { font-weight: 700; }
+    .log-row .q { flex: 1 1 14em; font-weight: 600; }
+    .log-row .chip { font-size: .75rem; padding: 1px 8px; border-radius: 999px; background: var(--line); }
+    .log-row .when { margin-left: auto; font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .log-row .mark { font-size: .75rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; color: #fff; }
+    .log-row .mark.ok { background: var(--ok); }
+    .log-row .mark.ng { background: var(--error); }
+    .log-row .sub { margin-top: 4px; font-size: .85rem; color: var(--muted); word-break: break-word; }
     .mis-ex { margin: 10px 0 0; padding: 0; list-style: none; font-size: .85rem; }
     .mis-ex li { padding: 6px 0; border-top: 1px dashed var(--line); word-break: break-word; }
     .mis-ex .wrong { text-decoration: line-through; color: var(--muted); }
@@ -647,6 +658,20 @@
         <div id="snd-list"></div>
         <p id="snd-msg" class="msg" role="status"></p>
       </section>
+      <section id="vpron-sec">
+        <h3 data-en="Word pronunciation">単語の発音</h3>
+        <p class="hint" data-en="Words from the vocabulary book where a sound was off, one by one, newest first (not added up). Tap a sound to see only those words.">単語帳で苦手な音があった単語を、まとめずに 1 回ずつ新しい順に出します。音のボタンで、その音の単語だけにできます。</p>
+        <div id="vpron-filter" class="mis-period" role="group" aria-label="音" data-en-aria="Sound"></div>
+        <div id="vpron-list"></div>
+        <p id="vpron-msg" class="msg" role="status"></p>
+      </section>
+      <section id="ans-sec">
+        <h3 data-en="Short answers">短い答え</h3>
+        <p class="hint" data-en="Results of the short-answer practice (like the Versant test), newest first.">短い答えの練習 (Versant 式) の結果を、新しい順に出します。</p>
+        <div id="ans-filter" class="mis-period" role="group" aria-label="絞り込み" data-en-aria="Filter"></div>
+        <div id="ans-list"></div>
+        <p id="ans-msg" class="msg" role="status"></p>
+      </section>
       </div>
     </section>
   </main>
@@ -655,6 +680,7 @@
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
     import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
     import { createStreakApi, friendlyError } from "./src/streak-client.js";
+    import { createPracticeLogs } from "./src/practice-logs.js";
 
     const $ = (id) => document.getElementById(id);
     const show = (name) => {
@@ -1745,8 +1771,13 @@
       }
     }
 
+    const practiceLogs = createPracticeLogs({
+      supabase, $, el, tr, say, fe, soundName: (code) => soundLabel({ sound: code, label: "" }),
+    });
+
     async function loadMistakes() {
       loadWeakSounds();
+      practiceLogs.load();
       say($("mis-msg"), "");
       for (const b of $("mis-period").querySelectorAll("button")) {
         b.setAttribute("aria-pressed", String(Number(b.dataset.days) === misDays));
