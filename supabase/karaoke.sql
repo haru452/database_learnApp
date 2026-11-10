@@ -27,7 +27,7 @@ create policy "karaoke_results_select_own"
 -- 「やった日」の種類 (schema.sql・topic.sql・repeat.sql・vocab.sql・answer.sql と同じ 7 種類)
 alter table public.activity_days drop constraint if exists activity_days_kind_check;
 alter table public.activity_days add constraint activity_days_kind_check
-  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer', 'karaoke'));
+  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer', 'karaoke', 'talk'));
 
 -- 1 曲分を残して、連続記録を進める (短い答えと同じ規則: 次の日なら +1、空いていれば 1、同じ日・過去の日なら変えない)
 -- p_items: [{"line":0,"text":"I want it that way","words":[{"word":"that","sound":"th"}]}, ...] (赤い単語がある行だけ。最大 200 行)

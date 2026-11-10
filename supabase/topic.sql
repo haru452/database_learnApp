@@ -58,7 +58,7 @@ create index if not exists mistakes_user_date_idx on public.mistakes (user_id, e
 -- repeat も入れておく: repeat.sql の後にこのファイルだけ実行し直しても、repeat の行が制約違反にならないように)
 alter table public.activity_days drop constraint if exists activity_days_kind_check;
 alter table public.activity_days add constraint activity_days_kind_check
-  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer', 'karaoke'));
+  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer', 'karaoke', 'talk'));
 
 alter table public.topic_results enable row level security;
 alter table public.mistakes enable row level security;

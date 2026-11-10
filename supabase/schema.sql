@@ -39,7 +39,7 @@ create table if not exists public.activity_days (
 -- (topic.sql・repeat.sql・vocab.sql・answer.sql・karaoke.sql も同じ 7 種類で付け直す。どれを後から実行しても、ほかの種類の行が制約違反にならないように)
 alter table public.activity_days drop constraint if exists activity_days_kind_check;
 alter table public.activity_days add constraint activity_days_kind_check
-  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer', 'karaoke'));
+  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer', 'karaoke', 'talk'));
 alter table public.activity_days enable row level security;
 
 drop policy if exists "activity_days_select_own" on public.activity_days;
