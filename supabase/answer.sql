@@ -23,10 +23,10 @@ create policy "short_answer_results_select_own"
   to authenticated
   using (user_id = auth.uid());
 
--- 「やった日」の種類 (schema.sql・topic.sql・repeat.sql・vocab.sql と同じ 6 種類)
+-- 「やった日」の種類 (schema.sql・topic.sql・repeat.sql・vocab.sql と同じ 7 種類)
 alter table public.activity_days drop constraint if exists activity_days_kind_check;
 alter table public.activity_days add constraint activity_days_kind_check
-  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer'));
+  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer', 'karaoke'));
 
 -- 1 回分を残して、連続記録を進める (単語帳と同じ規則: 次の日なら +1、空いていれば 1、同じ日・過去の日なら変えない)
 -- p_items: [{"question":"...","answers":["key","keys"],"heard":"a key","correct":true}, ...]

@@ -14,9 +14,13 @@ create table if not exists public.pronunciation_issues (
   label       text not null default '' check (char_length(label) <= 30),   -- other のときのそろえた名前
   weight      integer not null check (weight in (1, 3)),                     -- 3 = Gemini の判定、1 = 推測
   word        text not null default '' check (char_length(word) <= 40),
-  source      text not null check (source in ('check', 'read_aloud', 'repeat')),
+  source      text not null check (source in ('check', 'read_aloud', 'repeat', 'karaoke')),
   check ((sound = 'other') = (label <> ''))
 );
+-- 前に流した表にもカラオケを足す (表が先にあると create table の決まりは変わらないため)
+alter table public.pronunciation_issues drop constraint if exists pronunciation_issues_source_check;
+alter table public.pronunciation_issues add constraint pronunciation_issues_source_check
+  check (source in ('check', 'read_aloud', 'repeat', 'karaoke'));
 create index if not exists pronunciation_issues_user_date_idx
   on public.pronunciation_issues (user_id, entry_date desc, id desc);
 
@@ -81,7 +85,7 @@ begin
     v_label := case when v_sound = 'other' then public._sound_label(v_item->>'label') else '' end;
     continue when v_sound = 'other' and v_label = '';
     v_src := coalesce(v_item->>'source', '');
-    if v_src not in ('check', 'read_aloud', 'repeat') then v_src := 'repeat'; end if;
+    if v_src not in ('check', 'read_aloud', 'repeat', 'karaoke') then v_src := 'repeat'; end if;
 
     insert into public.pronunciation_issues (user_id, entry_date, sound, label, weight, word, source)
     values (v_uid, v_date, v_sound, v_label,

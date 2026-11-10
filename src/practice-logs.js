@@ -1,6 +1,7 @@
 // 「ミス」のページの 2 つの一覧。どちらもまとめずに、1 回ずつ新しい順に出す。
 //  - 単語の発音 (vocab_pron.sql): 単語帳で苦手な音 (th・R と L など) があった単語。音のボタンで絞れる
 //  - 短い答え (answer.sql): 短い答えの練習の問題・自分の答え・正解。「間違えただけ」で絞れる
+//  - カラオケ (karaoke.sql): 歌った曲・点数・うまく発音できなかった単語と音。1 曲ずつ
 // 表が無い (SQL を流していない) ときは、欄に理由だけ出す。
 
 const LIMIT = 200;
@@ -10,6 +11,7 @@ export function createPracticeLogs({ supabase, $, el, tr, say, fe, soundName }) 
   let pronSound = "all";
   let answers = [];
   let wrongOnly = false;
+  let songs = [];
 
   const when = (iso) => {
     const d = new Date(iso);
@@ -111,8 +113,50 @@ export function createPracticeLogs({ supabase, $, el, tr, say, fe, soundName }) 
     renderAnswers();
   }
 
+  // ---------------- カラオケ ----------------
+  function renderKaraoke() {
+    const list = $("karaoke-list");
+    list.replaceChildren();
+    if (songs.length === 0) {
+      list.append(el("p", "empty", tr("カラオケ (Modes → Karaoke) で歌うと、ここに結果が出ます。",
+        "Sing in Karaoke (Modes → Karaoke), and your results appear here.")));
+      return;
+    }
+    for (const r of songs) {
+      const row = el("div", "log-row");
+      const head = el("div", "head");
+      head.append(el("span", "word", r.artist ? `${r.title} / ${r.artist}` : r.title));
+      head.append(el("span", "chip", tr(`${r.score} 点`, `${r.score} / 100`)));
+      head.append(el("span", "when", when(r.taken_at)));
+      row.append(head);
+      const words = (r.items || []).flatMap((line) => (line.words || []));
+      if (words.length === 0) {
+        row.append(el("div", "sub", tr("言えなかった単語はありません。", "No hard words.")));
+      } else {
+        const chips = el("div", "sub");
+        for (const w of words) chips.append(el("span", "chip", `${w.word} (${soundName(w.sound)})`));
+        row.append(chips);
+      }
+      list.append(row);
+    }
+  }
+
+  async function loadKaraoke() {
+    say($("karaoke-msg"), "");
+    const { data, error } = await supabase.from("karaoke_results")
+      .select("title, artist, score, items, taken_at")
+      .order("taken_at", { ascending: false }).order("id", { ascending: false }).limit(LIMIT);
+    if (error) {
+      $("karaoke-list").replaceChildren();
+      say($("karaoke-msg"), fe(error), "error");
+      return;
+    }
+    songs = data || [];
+    renderKaraoke();
+  }
+
   return {
-    load: () => Promise.all([loadPron(), loadAnswers()]),
-    rerender: () => { renderPron(); renderAnswers(); },   // 言語を切り替えたとき
+    load: () => Promise.all([loadPron(), loadAnswers(), loadKaraoke()]),
+    rerender: () => { renderPron(); renderAnswers(); renderKaraoke(); },   // 言語を切り替えたとき
   };
 }
