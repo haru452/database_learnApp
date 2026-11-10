@@ -1,0 +1,370 @@
+:root {
+  --bg: #f4f6f8; --card: #ffffff; --text: #1d2733; --muted: #6a7785;
+  --line: #dfe5ea; --accent: #e8590c; --accent-dark: #c44a08; --ok: #2b8a3e; --error: #c92a2a;
+  /* 要約練習の項目ごとの色 (内容 / 構成 / 文法・語彙) */
+  --part-1: #2a78d6; --part-2: #eb6834; --part-3: #1baf7a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12181f; --card: #1b232c; --text: #e9eef3; --muted: #93a1af;
+    --line: #2c3743; --accent: #ff8a3d; --accent-dark: #ffa563; --ok: #51cf66; --error: #ff8787;
+    --part-1: #3987e5; --part-2: #d95926; --part-3: #199e70;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px;
+  background: var(--bg); color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+/* ログイン後は、中身が短いページでも画面の上に寄せる */
+body:has(#app:not([hidden])) { align-items: start; }
+.card {
+  width: 100%; max-width: 520px; background: var(--card); border: 1px solid var(--line);
+  border-radius: 16px; padding: 28px 24px;
+}
+h1 { font-size: 1.15rem; margin: 0 0 20px; }
+label { display: block; font-size: .85rem; color: var(--muted); margin: 14px 0 6px; }
+input {
+  width: 100%; padding: 11px 12px; font-size: 1rem; color: var(--text); background: transparent;
+  border: 1px solid var(--line); border-radius: 10px;
+}
+input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+button {
+  width: 100%; margin-top: 20px; padding: 13px; font-size: 1rem; font-weight: 600; cursor: pointer;
+  color: #fff; background: var(--accent); border: 0; border-radius: 10px;
+}
+button:hover:not(:disabled) { background: var(--accent-dark); }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 16px; }
+button.link {
+  width: auto; margin: 14px 0 0; padding: 0; font-weight: 400; font-size: .9rem;
+  color: var(--muted); background: none; text-decoration: underline;
+}
+button.link:hover:not(:disabled) { background: none; color: var(--text); }
+.msg { min-height: 1.4em; margin: 14px 0 0; font-size: .9rem; }
+.msg.error { color: var(--error); }
+.msg.ok { color: var(--ok); }
+.who { font-size: .85rem; color: var(--muted); word-break: break-all; margin: 0 0 18px; }
+.streak { text-align: center; padding: 18px 0 8px; }
+.streak .num { font-size: 4rem; font-weight: 800; line-height: 1; color: var(--accent); }
+.streak .unit { font-size: 1rem; color: var(--muted); margin-top: 6px; }
+.streak .sub { font-size: .85rem; color: var(--muted); margin-top: 10px; min-height: 1.3em; }
+.streak .best { font-size: .85rem; color: var(--muted); margin-top: 6px; }
+.streak .weeks { font-size: .95rem; font-weight: 600; margin-top: 8px; }
+h2 { font-size: 1rem; margin: 28px 0 4px; }
+.hint { font-size: .8rem; color: var(--muted); margin: 0 0 12px; }
+.day { font-size: .85rem; font-weight: 700; color: var(--muted); margin: 18px 0 8px; }
+.entry { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 10px; }
+.entry .meta { font-size: .75rem; color: var(--muted); margin-bottom: 8px; }
+.entry .lbl { font-size: .7rem; font-weight: 700; color: var(--muted); margin: 8px 0 2px; }
+.entry .lbl.fix { color: var(--accent); }
+.entry p { margin: 0; white-space: pre-wrap; word-break: break-word; line-height: 1.55; }
+.entry p.exp { font-size: .85rem; color: var(--muted); margin-top: 8px; }
+.empty { font-size: .9rem; color: var(--muted); }
+/* ---- 要約練習のスコア ---- */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 4px 0 14px; }
+.stat { border: 1px solid var(--line); border-radius: 12px; padding: 10px 8px; text-align: center; }
+.stat .lbl { font-size: .7rem; color: var(--muted); }
+.stat .val { font-size: 1.35rem; font-weight: 700; margin-top: 2px; }
+@media (max-width: 400px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+.chart { position: relative; margin: 0 0 6px; }
+.chart svg { display: block; width: 100%; height: 200px; touch-action: pan-y; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .area { fill: var(--accent); fill-opacity: .1; }
+.chart .line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .dot { fill: var(--accent); stroke: var(--card); stroke-width: 2; }
+.chart .end-label { fill: var(--text); font-size: 12px; font-weight: 700; }
+.chart .cross { stroke: var(--muted); stroke-width: 1; }
+.tip {
+  position: absolute; top: 0; pointer-events: none; max-width: 220px; padding: 8px 10px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .12); font-size: .8rem; line-height: 1.4;
+}
+.tip .score { font-size: 1rem; font-weight: 700; }
+.tip .sub { color: var(--muted); }
+.result .head { display: flex; gap: 10px; align-items: baseline; }
+.result .score { flex: none; font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.result .score small { font-size: .7rem; font-weight: 400; color: var(--muted); }
+.result a { color: var(--text); word-break: break-word; }
+.result details { margin-top: 8px; }
+.result .parts-line { font-size: .78rem; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+/* 項目ごとの点数 */
+h3 { font-size: .9rem; margin: 22px 0 4px; }
+.meters { margin: 8px 0 4px; }
+.meter { display: grid; grid-template-columns: 6.5em 1fr 4.5em; gap: 10px; align-items: center; margin: 0 0 10px; }
+.meter .name { font-size: .85rem; display: flex; align-items: center; gap: 6px; }
+.meter .track { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+.meter .fill { height: 100%; border-radius: 5px; }
+.meter .val { font-size: .85rem; text-align: right; font-variant-numeric: tabular-nums; }
+.swatch { flex: none; width: 10px; height: 10px; border-radius: 3px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .8rem; margin: 6px 0 4px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chart .seg-1 { fill: var(--part-1); }
+.chart .seg-2 { fill: var(--part-2); }
+.chart .seg-3 { fill: var(--part-3); }
+.chart .col-hit { fill: transparent; }
+.chart .col-hover { fill: var(--muted); fill-opacity: .1; }
+.tip .row { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.result summary { cursor: pointer; font-size: .8rem; color: var(--muted); }
+/* リピーティング: 苦手な文・日ごとの結果 */
+.weak-row { display: flex; gap: 10px; align-items: baseline; }
+.weak-row .acc, .rep-row .acc { flex: none; width: 3.2em; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.weak-row .acc { color: var(--error); }
+.weak-row .text { flex: 1; word-break: break-word; }
+.weak-row .times { flex: none; font-size: .75rem; color: var(--muted); }
+.rep-row { display: flex; gap: 10px; align-items: baseline; font-size: .9rem; margin: 0 0 6px; }
+.rep-row .acc.low { color: var(--error); }
+.rep-row .text { flex: 1; word-break: break-word; }
+.rep-row .mode { flex: none; font-size: .7rem; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--muted); color: var(--muted); }
+/* 使い方 (たためる説明) */
+.howto { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin: 0 0 14px; }
+.howto > summary { cursor: pointer; font-size: .9rem; font-weight: 700; }
+.howto ol { margin: 10px 0 0; padding-left: 1.3em; }
+.howto li { font-size: .85rem; line-height: 1.6; margin: 0 0 10px; }
+.howto li b { display: block; }
+.howto ul { margin: 4px 0 0; padding-left: 1.1em; }
+.howto li li { margin: 0 0 2px; }
+.howto code { font-family: inherit; font-size: .8rem; padding: 1px 6px; border-radius: 6px; background: var(--line); }
+.howto .note { font-size: .8rem; color: var(--muted); margin: 4px 0 0; }
+/* ---------- やった日カレンダー ---------- */
+.cal { margin: 24px 0 4px; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.cal-head h2 { margin: 0; }
+.cal-nav { display: flex; gap: 8px; }
+.cal-nav button {
+  width: 38px; height: 34px; margin: 0; padding: 0; font-size: 1.2rem; line-height: 1;
+  color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 8px;
+}
+.cal-nav button:hover:not(:disabled) { background: var(--line); }
+.cal-week, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.cal-week div { text-align: center; font-size: .75rem; font-weight: 700; color: var(--muted); padding: 4px 0 6px; }
+.cal-day { position: relative; height: 58px; display: grid; place-items: center; }
+.cal-day .n { position: relative; z-index: 1; font-size: .85rem; font-weight: 700; }
+.cal-day.out .n { opacity: .45; }
+/* 続けてやった日をつなぐ帯 */
+.cal-day.on::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 34px; transform: translateY(-50%);
+  background: var(--line); z-index: 0;
+}
+.cal-day.on.first::before { left: 50%; border-radius: 0; }
+.cal-day.on.last::before { right: 50%; }
+.cal-day.on.first.last::before { display: none; }
+.cal-day .flame { position: absolute; z-index: 1; width: 40px; height: 46px; top: 50%; left: 50%; transform: translate(-50%, -52%); }
+.cal-day.on .n { color: #1d2733; transform: translateY(3px); }
+.cal-day.diary   { --flame: #e03131; }
+.cal-day.summary { --flame: #4dabf7; }
+.cal-day.topic   { --flame: #40c057; }
+.cal-day.repeat  { --flame: #f06595; }
+.cal-day.vocab   { --flame: #845ef7; }
+.cal-day.bronze  { --flame: #c27c3e; }
+.cal-day.silver  { --flame: #a3acb9; }
+.cal-day.gold    { --flame: #fcc419; }
+.cal-day .flame path { fill: var(--flame); }
+.cal-day.today::after {
+  content: ""; position: absolute; z-index: 2; bottom: 4px; left: 50%; width: 5px; height: 5px;
+  margin-left: -2.5px; border-radius: 50%; background: var(--text);
+}
+.cal-day.on.today::after { background: #1d2733; bottom: 9px; }
+/* ---------- カレンダーの下: この月にやったこと (パソコンのときだけ表示) ---------- */
+.cal-days { display: none; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.cal-days h3 { margin: 0 0 8px; }
+.cal-days ul { margin: 0; padding: 0; list-style: none; columns: 2; column-gap: 24px; }
+.cal-days li {
+  display: grid; grid-template-columns: 7.5em 1fr; gap: 10px; align-items: baseline;
+  padding: 6px 0; border-bottom: 1px dashed var(--line); break-inside: avoid; font-size: .85rem;
+}
+.cal-days .date { font-weight: 700; font-variant-numeric: tabular-nums; }
+.cal-days .date::before {
+  content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+  margin-right: 7px; vertical-align: 0; background: var(--flame);
+}
+.cal-days .what { display: flex; flex-wrap: wrap; gap: 2px 12px; color: var(--muted); }
+.cal-days .what span::before {
+  content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  margin-right: 5px; vertical-align: 1px; background: var(--c);
+}
+.cal-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .78rem; color: var(--muted); margin-top: 8px; }
+.cal-legend span::before {
+  content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+  margin-right: 6px; vertical-align: -1px; background: var(--c);
+}
+/* ---------- 上のバーとハンバーガーメニュー ---------- */
+.topbar {
+  display: flex; align-items: center; justify-content: flex-start; gap: 12px;
+  margin: -8px 0 18px; padding-bottom: 12px; border-bottom: 1px solid var(--line);
+}
+.topbar h1 { margin: 0; }
+.menu-btn {
+  width: 42px; height: 42px; margin: 0; padding: 0; flex: none;
+  display: grid; place-content: center; gap: 5px;
+  background: transparent; border: 1px solid var(--line); border-radius: 10px;
+}
+.menu-btn:hover:not(:disabled) { background: var(--line); }
+.menu-btn span { display: block; width: 18px; height: 2px; border-radius: 2px; background: var(--text); }
+.menu-backdrop {
+  position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, .35);
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.menu {
+  position: fixed; z-index: 21; top: 0; left: 0; bottom: 0; width: min(280px, 82vw);
+  display: flex; flex-direction: column; padding: 20px 14px;
+  background: var(--card); border-right: 1px solid var(--line); box-shadow: 8px 0 24px rgba(0, 0, 0, .18);
+  transform: translateX(-100%); visibility: hidden; transition: transform .22s ease, visibility .22s;
+}
+body.menu-open .menu { transform: none; visibility: visible; }
+body.menu-open .menu-backdrop { opacity: 1; pointer-events: auto; }
+.menu-head { display: flex; align-items: center; justify-content: space-between; margin: 0 4px 6px; }
+.menu-head strong { font-size: 1rem; }
+.menu-close {
+  width: 36px; height: 36px; margin: 0; padding: 0; font-size: 1.4rem; line-height: 1;
+  color: var(--muted); background: transparent; border: 0; border-radius: 8px;
+}
+.menu-close:hover:not(:disabled) { background: var(--line); color: var(--text); }
+.menu .who { margin: 0 4px 14px; }
+.menu-item {
+  width: 100%; margin: 2px 0; padding: 12px 14px; text-align: left; font-weight: 600; font-size: .95rem;
+  color: var(--text); background: transparent; border-radius: 10px;
+}
+.menu-item:hover:not(:disabled) { background: var(--line); }
+.menu-item[aria-current="page"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.menu-sep { height: 1px; background: var(--line); margin: 12px 4px; }
+.menu-item.logout { color: var(--muted); font-weight: 400; }
+.page > h2:first-child { margin-top: 0; }
+/* ---------- よくあるミス ---------- */
+.mis-period { display: flex; gap: 8px; margin: 4px 0 14px; }
+.mis-period button {
+  width: auto; margin: 0; padding: 7px 14px; font-size: .85rem; font-weight: 600;
+  color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 999px;
+}
+.mis-period button:hover:not(:disabled) { background: var(--line); }
+.mis-period button[aria-pressed="true"] { color: #fff; background: var(--accent); border-color: var(--accent); }
+.mis-row { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 0 0 8px; }
+.mis-row summary {
+  list-style: none; cursor: pointer; display: grid; grid-template-columns: 8.5em 1fr auto;
+  align-items: center; gap: 10px;
+}
+.mis-row summary::-webkit-details-marker { display: none; }
+.mis-row .name { font-size: .85rem; font-weight: 600; }
+.mis-row .bar { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+.mis-row .bar span { display: block; height: 100%; border-radius: 5px; background: var(--muted); }
+.mis-row.top .bar span { background: var(--accent); }
+.mis-row .cnt { font-size: .85rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mis-row .trend { margin-left: 4px; font-weight: 700; }
+.mis-row .trend.up { color: var(--error); }
+.mis-row .trend.down { color: var(--ok); }
+/* 苦手な発音 (よくあるミスと同じ見た目) */
+#snd-sec { margin-top: 24px; }
+.snd-row { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 0 0 8px; }
+.snd-row .head { display: grid; grid-template-columns: 8em 1fr auto; gap: 10px; align-items: center; }
+.snd-row .name { font-size: .85rem; font-weight: 600; }
+.snd-row .bar { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+.snd-row .bar span { display: block; height: 100%; border-radius: 5px; background: var(--accent); }
+.snd-row .cnt { font-size: .85rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.snd-row .trend { margin-left: 4px; font-weight: 700; }
+.snd-row .trend.up { color: var(--error); }
+.snd-row .trend.down { color: var(--ok); }
+.snd-row .words { margin-top: 6px; font-size: .8rem; color: var(--muted); word-break: break-word; }
+.snd-other summary { list-style: none; cursor: pointer; }
+.snd-other summary::-webkit-details-marker { display: none; }
+.snd-other summary .name::before { content: "▶ "; font-size: .7em; }
+.snd-other[open] summary .name::before { content: "▼ "; }
+.snd-sub { margin: 10px 0 0; padding: 0; list-style: none; font-size: .85rem; }
+.snd-sub li { padding: 6px 0; border-top: 1px dashed var(--line); word-break: break-word; }
+.snd-sub .sub-name { font-weight: 600; }
+.snd-sub .sub-cnt { margin-left: 8px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.snd-sub .words { display: block; margin-top: 2px; }
+html[lang="en"] .snd-row .head { grid-template-columns: 10.5em 1fr auto; }
+/* 単語の発音・短い答え: 1 回ずつの行 (src/practice-logs.js) */
+.log-row { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 0 0 8px; }
+.log-row .head { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: baseline; }
+.log-row .word { font-weight: 700; }
+.log-row .q { flex: 1 1 14em; font-weight: 600; }
+.log-row .chip { font-size: .75rem; padding: 1px 8px; border-radius: 999px; background: var(--line); }
+.log-row .when { margin-left: auto; font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.log-row .mark { font-size: .75rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; color: #fff; }
+.log-row .mark.ok { background: var(--ok); }
+.log-row .mark.ng { background: var(--error); }
+.log-row .sub { margin-top: 4px; font-size: .85rem; color: var(--muted); word-break: break-word; }
+.mis-ex { margin: 10px 0 0; padding: 0; list-style: none; font-size: .85rem; }
+.mis-ex li { padding: 6px 0; border-top: 1px dashed var(--line); word-break: break-word; }
+.mis-ex .wrong { text-decoration: line-through; color: var(--muted); }
+.mis-ex .src { font-size: .72rem; color: var(--muted); margin-left: 6px; }
+/* ---------- パソコン (広い画面) 用のレイアウト ----------
+   スマホ (899px 以下) は今までどおり 1列 + ハンバーガーメニュー。
+   900px 以上では、メニューを左に常に表示し、ページを横に広く使う。 */
+@media (min-width: 900px) {
+  body { display: block; padding: 32px 24px; }
+  .card { margin: 0 auto; }
+  /* ログイン後だけ広くする (ログイン・設定の画面は細いまま) */
+  .card:has(#app:not([hidden])) { max-width: 1160px; padding: 28px 32px; }
+  #app:not([hidden]) {
+    display: grid; grid-template-columns: 230px minmax(0, 1fr); grid-template-rows: auto 1fr;
+    column-gap: 32px;
+  }
+  #app .topbar { grid-column: 2; grid-row: 1; margin-top: 0; }
+  #app .page { grid-column: 2; grid-row: 2; min-width: 0; }
+  /* ハンバーガーをやめて、サイドバーとして常に表示 */
+  .menu-btn, .menu-close, .menu-backdrop { display: none; }
+  .menu {
+    grid-column: 1; grid-row: 1 / -1; align-self: start; position: sticky; top: 32px; z-index: auto;
+    width: auto; padding: 0 24px 0 0; background: none; box-shadow: none;
+    transform: none; visibility: visible; transition: none;
+  }
+  .menu-head { margin-top: 4px; }
+
+  .cal-day { height: 64px; }
+  /* カレンダーの下の「この月にやったこと」(スマホでは出さない) */
+  .cal-days:not(:empty) { display: block; }
+}
+/* ホーム: 画面が十分広いときだけ、連続日数 (左) とカレンダー (右) を横に並べる */
+@media (min-width: 1100px) {
+  .page[data-page="home"] {
+    display: grid; grid-template-columns: 220px minmax(0, 1fr); grid-template-rows: auto 1fr;
+    column-gap: 28px; align-items: start;
+  }
+  .page[data-page="home"] .streak {
+    grid-column: 1; grid-row: 1; padding: 28px 12px 22px;
+    border: 1px solid var(--line); border-radius: 14px;
+  }
+  .page[data-page="home"] #app-msg { grid-column: 1; grid-row: 2; }
+  .page[data-page="home"] .cal { grid-column: 2; grid-row: 1 / span 2; margin: 0; }
+}
+@media (min-width: 900px) {
+
+  /* 一覧は 2列 (日付の見出しや「まだありません」は横いっぱい) */
+  #diary-list, #sum-list, #top-list, #rep-list, #rep-weak, #mis-list {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; align-items: start;
+  }
+  #diary-list > .entry, #sum-list > .entry, #top-list > .entry,
+  #rep-list > .entry, #rep-weak > .entry, #mis-list > .mis-row { margin: 0; }
+  #diary-list > :not(.entry), #sum-list > :not(.entry), #top-list > :not(.entry),
+  #rep-list > :not(.entry), #rep-weak > :not(.entry), #mis-list > :not(.mis-row) { grid-column: 1 / -1; }
+  #diary-list > .day, #rep-list > .day { margin: 12px 0 0; }
+  #diary-list > .day:first-child, #rep-list > .day:first-child { margin-top: 0; }
+
+  /* 使い方の説明は読みやすい幅まで */
+  .howto { max-width: 760px; }
+}
+/* ---------- 言語の切り替え (日本語 / English) ---------- */
+.lang-switch {
+  display: inline-flex; flex: none; margin-left: auto; padding: 2px;
+  border: 1px solid var(--line); border-radius: 999px;
+}
+.lang-switch button {
+  width: auto; margin: 0; padding: 5px 10px; font-size: .78rem; font-weight: 700; line-height: 1;
+  color: var(--muted); background: transparent; border-radius: 999px;
+}
+.lang-switch button:hover:not(:disabled) { color: var(--text); background: var(--line); }
+.lang-switch button[aria-pressed="true"],
+.lang-switch button[aria-pressed="true"]:hover:not(:disabled) { color: #fff; background: var(--accent); }
+.lang-row { display: flex; align-items: center; gap: 12px; margin: 0 0 20px; }
+.lang-row h1 { margin: 0; }
+.topbar h1 { min-width: 0; }
+/* 英語は項目名が長いので、名前の列を少し広くする */
+html[lang="en"] .meter { grid-template-columns: 9.5em 1fr 4.5em; }
+html[lang="en"] .mis-row summary { grid-template-columns: 10.5em 1fr auto; }
+/* 使い方などの長い説明は、日本語版と英語版の両方を置いて、選んだほうだけ見せる */
+html[lang="en"] [data-lang-block="ja"], html:not([lang="en"]) [data-lang-block="en"] { display: none; }
+[hidden] { display: none !important; }

@@ -82,6 +82,7 @@ SOUNDS = [   # get_my_weak_sounds (points の多い順)
     {"sound": "th", "label": "", "points": 9, "previous_points": 3, "words": ["think", "three"]},
     {"sound": "other", "label": "z", "points": 6, "previous_points": 6, "words": []},
     {"sound": "r_l", "label": "", "points": 2, "previous_points": 5, "words": [XSS]},
+    {"sound": "other", "label": "ng", "points": 2, "previous_points": 2, "words": ["thing", "sing"]},
 ]
 
 MISTAKES = [
@@ -269,7 +270,15 @@ async def run(browser, scheme):
     # 苦手な発音
     check(await page.locator("#snd-sec h3").inner_text() == "苦手な発音", f"{scheme}: weak sounds heading")
     snames = await page.locator("#snd-list .snd-row .name").all_inner_texts()
-    check(snames == ["TH の音", "その他: z", "R と L"], f"{scheme}: weak sound rows {snames}")
+    check(snames == ["TH の音", "その他 (2 種類)", "R と L"], f"{scheme}: weak sound rows {snames}")
+    # その他はまとめて 1 行。押すと音ごとの点と例が開く
+    other = page.locator("#snd-list .snd-row").nth(1)
+    check(await other.locator(".snd-sub").is_visible() is False, f"{scheme}: other details closed at first")
+    await other.locator("summary").click()
+    subs = await other.locator(".snd-sub li").all_inner_texts()
+    check(len(subs) == 2 and subs[0].startswith("z") and "6" in subs[0] and subs[1].startswith("ng") and "thing" in subs[1],
+          f"{scheme}: other details {subs}")
+    check("8" in await other.locator("summary .cnt").inner_text(), f"{scheme}: other total points")
     check(await page.locator("#snd-list .snd-row").nth(0).locator(".trend.up").count() == 1, f"{scheme}: th up")
     check(await page.locator("#snd-list .snd-row").nth(1).locator(".trend").count() == 0, f"{scheme}: same -> no arrow")
     check(await page.locator("#snd-list .snd-row").nth(2).locator(".trend.down").count() == 1, f"{scheme}: r_l down")

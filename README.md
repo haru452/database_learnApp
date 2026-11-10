@@ -31,6 +31,10 @@
 | `tests/web_test.py` | Web 版のテスト（Playwright。Supabase はダミーに差し替える） |
 | `src/streak-client.js` | ログイン・ストリーク・日記を呼ぶモジュール（どのフレームワークでも使える） |
 | `index.html` + `config.js` | Web 版の画面。そのまま Vercel に公開できる |
+| `src/main.js` | Web 版の入口。言語の切り替えを用意し、`config.js` が設定済みなら `src/page/` を読み込む |
+| `src/page/` | Web 版のページごとの処理（`core.js` 共通の部品と言語、`auth.js` ログイン、`streak.js` 連続記録とカレンダー、`diary.js` 日記、`summary.js` 要約と共通のグラフ、`topic.js` お題、`repeat.js` リピーティング、`mistakes.js` よくあるミスと苦手な発音、`nav.js` メニューとページの切り替え） |
+| `src/styles.css` | Web 版の見た目 |
+| `src/practice-logs.js` / `src/weak-sounds.js` | 「ミス」のページの記録の一覧 / 苦手な発音の「その他」をまとめる処理 |
 | `.env.example` | Vite / Next.js に組み込むときの環境変数のひな形 |
 
 ## 仕組み
@@ -139,7 +143,7 @@ api.onAuthChange((user) => { /* user が null ならログアウト状態 */ });
 friendlyError(error);                                      // エラーを日本語のメッセージにする
 ```
 
-React の場合は、`useEffect` で `api.onAuthChange` を登録し、戻り値（解除用の関数）を `return` する。`index.html` の中のスクリプトが、そのまま参考になる。
+React の場合は、`useEffect` で `api.onAuthChange` を登録し、戻り値（解除用の関数）を `return` する。`src/page/nav.js` の最後の部分が、そのまま参考になる。
 
 `getStreak()` が返す `streak` は、**いま有効な** 連続日数。最後に書いた日が一昨日以前なら、途切れているので `0` になる（テーブルの値は、次に書くまで更新されないため、DB の値をそのまま表示しない）。
 
