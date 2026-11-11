@@ -225,6 +225,11 @@ async def run(browser, scheme):
     check("お題スピーキング" in items and "よくあるミス" in items, f"{scheme}: menu has the two new pages")
     check("リピーティング" in items and items.index("リピーティング") == items.index("お題スピーキング") + 1,
           f"{scheme}: menu has repeat after topic {items}")
+    check(items.index("短い答え") == items.index("リピーティング") + 1 and items.index("カラオケ") == items.index("短い答え") + 1
+          and items.index("よくあるミス") == items.index("カラオケ") + 1, f"{scheme}: answer and karaoke pages before mistakes {items}")
+    for name, sec in (("answer", "#ans-list"), ("karaoke", "#karaoke-list")):
+        check(await page.locator(f'.page[data-page="{name}"] {sec}').count() == 1
+              and await page.locator(f'.page[data-page="mistakes"] {sec}').count() == 0, f"{scheme}: {name} has its own page")
 
     # お題スピーキング
     await go(page, "topic")

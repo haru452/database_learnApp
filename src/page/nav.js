@@ -6,14 +6,14 @@ import { TOPIC_PARTS, renderSummaryChart, renderSummaryParts, sumResults } from 
 import { topResults } from "./topic.js";
 import { REPEAT_UNIT, repDays } from "./repeat.js";
 
-// ---------- ハンバーガーメニューとページの切り替え (URL の #diary / #summary / #topic / #repeat / #mistakes で直接開ける) ----------
+// ---------- ハンバーガーメニューとページの切り替え (URL の #diary / #summary / #topic / #repeat / #answer / #karaoke / #mistakes で直接開ける) ----------
 export const PAGES = {
   home: "学習ストリーク", diary: "日記の履歴", summary: "要約練習のスコア",
-  topic: "お題スピーキング", repeat: "リピーティング", mistakes: "よくあるミス",
+  topic: "お題スピーキング", repeat: "リピーティング", answer: "短い答え", karaoke: "カラオケ", mistakes: "よくあるミス",
 };
 export const PAGES_EN = {
   home: "Study Streak", diary: "Diary history", summary: "Summary scores",
-  topic: "Topic speaking", repeat: "Repeating", mistakes: "Common mistakes",
+  topic: "Topic speaking", repeat: "Repeating", answer: "Short answers", karaoke: "Karaoke", mistakes: "Common mistakes",
 };
 export let currentPage = "home";
 
