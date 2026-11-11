@@ -100,7 +100,9 @@ def rr(i, d, sentence, acc):
 
 
 REPEAT = [   # 新しい順 (サーバーと同じ)
-    dict(rr(7, 0, "", 40), mode="shadow", source="bbc"),   # シャドーは点数だけ (英文なし)。苦手な文に入れない
+    dict(rr(7, 0, "", 40), mode="shadow", source="youtube",   # シャドーは英文なし。動画のリンクとアドバイスを出す。苦手な文に入れない
+         video_id="abcDEF12345", video_title="Morning news <b>x</b>", advice="Say the ends of words clearly.
+<img src=x onerror=window.__xss=1>"),
     rr(6, 0, "Could you send me the file?", 90),     # 前は 60% → 今は 90% なので苦手ではない
     rr(5, 0, "I have lived here for three years.", 70),
     rr(4, -1, XSS + " is not a tag.", 50),
@@ -311,8 +313,13 @@ async def run(browser, scheme):
     check(not any("Could you send" in w for w in weak), f"{scheme}: improved sentence not weak")
     check(not any(w.startswith("40%") for w in weak), f"{scheme}: shadowing score not in weak sentences {weak}")
     shadow_row = await page.locator("#rep-list .rep-row", has=page.locator(".mode")).inner_text()
-    check("40%" in shadow_row and "シャドーイング" in shadow_row,
-          f"{scheme}: shadow row shows score and a label instead of text {shadow_row!r}")
+    check("40%" in shadow_row and "Morning news <b>x</b>" in shadow_row,
+          f"{scheme}: shadow row shows score and the video title (as text) {shadow_row!r}")
+    link = page.locator("#rep-list .rep-row a.video-link")
+    check(await link.count() == 1 and await link.get_attribute("href") == "https://www.youtube.com/watch?v=abcDEF12345"
+          and await link.get_attribute("target") == "_blank", f"{scheme}: shadow row links to the YouTube video")
+    advice = await page.locator("#rep-list .advice-text").all_inner_texts()
+    check(len(advice) == 1 and advice[0].startswith("Say the ends of words clearly."), f"{scheme}: shadow advice shown {advice}")
     marks = await page.locator("#rep-list .rep-row .mode").all_inner_texts()
     check(marks == ["シャドー"], f"{scheme}: shadow mark on the shadowing row only {marks}")
     check(await page.locator("#rep-list .day").count() == 3, f"{scheme}: results grouped by day")

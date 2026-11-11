@@ -1,4 +1,4 @@
-import { $, el, fe, lang, say, tr } from "./core.js";
+import { $, adviceBlock, el, fe, lang, say, tr, videoLink } from "./core.js";
 import { api, supabase } from "./supabase.js";
 import { createPracticeLogs } from "../practice-logs.js";
 import { groupWeakSounds } from "../weak-sounds.js";
@@ -135,7 +135,7 @@ export async function loadWeakSounds() {
 }
 
 export const practiceLogs = createPracticeLogs({
-  supabase, $, el, tr, say, fe, soundName: (code) => soundLabel({ sound: code, label: "" }),
+  supabase, $, el, tr, say, fe, videoLink, adviceBlock, soundName: (code) => soundLabel({ sound: code, label: "" }),
 });
 
 export async function loadMistakes() {

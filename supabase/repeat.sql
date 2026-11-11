@@ -34,6 +34,15 @@ update public.repeat_results set sentence = '', heard = '' where mode = 'shadow'
 alter table public.repeat_results add constraint repeat_results_sentence_check
   check (char_length(sentence) <= 300 and (mode = 'shadow' or char_length(sentence) >= 1));
 
+-- シャドーイングの動画 (YouTube の id と題名) と Gemini のアドバイス。Web でリンクとアドバイスを見られるように。
+-- 英文・言った内容は今までどおり保存しない
+alter table public.repeat_results add column if not exists video_id text not null default '';
+alter table public.repeat_results add column if not exists video_title text not null default '';
+alter table public.repeat_results add column if not exists advice text not null default '';
+alter table public.repeat_results drop constraint if exists repeat_results_video_check;
+alter table public.repeat_results add constraint repeat_results_video_check
+  check (char_length(video_id) <= 20 and char_length(video_title) <= 200 and char_length(advice) <= 2000);
+
 create index if not exists repeat_results_user_created_idx
   on public.repeat_results (user_id, created_at desc, id desc);
 
@@ -148,7 +157,8 @@ drop function if exists public.get_my_repeat_sentences(integer, integer, text);
 drop function if exists public.get_my_repeat_results(integer);
 
 -- 結果をまとめて保存する (最大 10 件)。保存した件数を返す。
--- p_results: [{sentence, heard, accuracy, replays, source, voice, tatoeba_id, audio_id, mode}]  (mode: repeat / shadow)
+-- p_results: [{sentence, heard, accuracy, replays, source, voice, tatoeba_id, audio_id, mode, video_id, video_title, advice}]
+--   (mode: repeat / shadow。video_id・video_title・advice はシャドーイングのときだけ保存する)
 -- p_version: アプリはシャドーイングのとき 2 を送る (この引数の無い古い関数では「関数が無い」になり、アプリが端末に一時保存する)
 create function public.save_repeat_results(p_timezone text, p_results jsonb, p_taken_at timestamptz default null,
                                            p_version integer default 1)
@@ -188,7 +198,8 @@ begin
     v_voice := coalesce(v_item->>'voice', '');
     if v_voice not in ('human', 'gemini', 'device') then v_voice := 'device'; end if;
 
-    insert into public.repeat_results (user_id, entry_date, sentence, heard, accuracy, replays, source, voice, tatoeba_id, audio_id, mode)
+    insert into public.repeat_results (user_id, entry_date, sentence, heard, accuracy, replays, source, voice, tatoeba_id, audio_id, mode,
+                                       video_id, video_title, advice)
     values (v_uid, v_date, v_text,
             case when v_mode = 'shadow' then '' else left(coalesce(v_item->>'heard', ''), 500) end,
             least(greatest(coalesce((v_item->>'accuracy')::numeric, 0), 0), 100)::integer,
@@ -196,7 +207,10 @@ begin
             v_src, v_voice,
             nullif((v_item->>'tatoeba_id')::numeric, 0)::bigint,
             nullif((v_item->>'audio_id')::numeric, 0)::bigint,
-            v_mode);
+            v_mode,
+            case when v_mode = 'shadow' then left(btrim(coalesce(v_item->>'video_id', '')), 20) else '' end,
+            case when v_mode = 'shadow' then left(btrim(coalesce(v_item->>'video_title', '')), 200) else '' end,
+            case when v_mode = 'shadow' then left(btrim(coalesce(v_item->>'advice', '')), 2000) else '' end);
     v_n := v_n + 1;
   end loop;
 
@@ -282,13 +296,15 @@ $$;
 -- Web 用: 結果を新しい順に
 create function public.get_my_repeat_results(p_limit integer default 200)
 returns table (id bigint, entry_date date, created_at timestamptz, sentence text, heard text,
-               accuracy integer, replays integer, source text, voice text, mode text)
+               accuracy integer, replays integer, source text, voice text, mode text,
+               video_id text, video_title text, advice text)
 language sql
 stable
 security invoker
 set search_path = public
 as $$
-  select r.id, r.entry_date, r.created_at, r.sentence, r.heard, r.accuracy, r.replays, r.source, r.voice, r.mode
+  select r.id, r.entry_date, r.created_at, r.sentence, r.heard, r.accuracy, r.replays, r.source, r.voice, r.mode,
+         r.video_id, r.video_title, r.advice
     from public.repeat_results r
    where r.user_id = (select auth.uid())
    order by r.created_at desc, r.id desc

@@ -1,12 +1,12 @@
 // 「ミス」のページの 2 つの一覧。どちらもまとめずに、1 回ずつ新しい順に出す。
 //  - 単語の発音 (vocab_pron.sql): 単語帳で苦手な音 (th・R と L など) があった単語。音のボタンで絞れる
 //  - 短い答え (answer.sql): 短い答えの練習の問題・自分の答え・正解。「間違えただけ」で絞れる
-//  - カラオケ (karaoke.sql): 歌った曲・点数・うまく発音できなかった単語と音。1 曲ずつ
+//  - カラオケ (karaoke.sql): 歌った曲 (YouTube へのリンク)・点数・うまく発音できなかった単語と音・Gemini のアドバイス。1 曲ずつ
 // 表が無い (SQL を流していない) ときは、欄に理由だけ出す。
 
 const LIMIT = 200;
 
-export function createPracticeLogs({ supabase, $, el, tr, say, fe, soundName }) {
+export function createPracticeLogs({ supabase, $, el, tr, say, fe, videoLink, adviceBlock, soundName }) {
   let pron = [];
   let pronSound = "all";
   let answers = [];
@@ -125,7 +125,9 @@ export function createPracticeLogs({ supabase, $, el, tr, say, fe, soundName }) 
     for (const r of songs) {
       const row = el("div", "log-row");
       const head = el("div", "head");
-      head.append(el("span", "word", r.artist ? `${r.title} / ${r.artist}` : r.title));
+      const name = videoLink(r.video_id, r.artist ? `${r.title} / ${r.artist}` : r.title);
+      name.classList.add("word");
+      head.append(name);
       head.append(el("span", "chip", tr(`${r.score} 点`, `${r.score} / 100`)));
       head.append(el("span", "when", when(r.taken_at)));
       row.append(head);
@@ -137,6 +139,8 @@ export function createPracticeLogs({ supabase, $, el, tr, say, fe, soundName }) 
         for (const w of words) chips.append(el("span", "chip", `${w.word} (${soundName(w.sound)})`));
         row.append(chips);
       }
+      const advice = adviceBlock(r.advice);
+      if (advice) row.append(advice);
       list.append(row);
     }
   }
@@ -144,7 +148,7 @@ export function createPracticeLogs({ supabase, $, el, tr, say, fe, soundName }) 
   async function loadKaraoke() {
     say($("karaoke-msg"), "");
     const { data, error } = await supabase.from("karaoke_results")
-      .select("title, artist, score, items, taken_at")
+      .select("title, artist, video_id, score, items, advice, taken_at")
       .order("taken_at", { ascending: false }).order("id", { ascending: false }).limit(LIMIT);
     if (error) {
       $("karaoke-list").replaceChildren();

@@ -13,6 +13,11 @@ create table if not exists public.karaoke_results (
   score     integer not null check (score between 0 and 100),
   items     jsonb not null default '[]'::jsonb check (jsonb_typeof(items) = 'array')
 );
+-- Gemini のアドバイス (Web で見られるように)。前からある表にも足す
+alter table public.karaoke_results add column if not exists advice text not null default '';
+alter table public.karaoke_results drop constraint if exists karaoke_results_advice_check;
+alter table public.karaoke_results add constraint karaoke_results_advice_check check (char_length(advice) <= 2000);
+
 create index if not exists karaoke_results_user_time on public.karaoke_results (user_id, taken_at desc, id desc);
 
 alter table public.karaoke_results enable row level security;
@@ -31,10 +36,12 @@ alter table public.activity_days add constraint activity_days_kind_check
 
 -- 1 曲分を残して、連続記録を進める (短い答えと同じ規則: 次の日なら +1、空いていれば 1、同じ日・過去の日なら変えない)
 -- p_items: [{"line":0,"text":"I want it that way","words":[{"word":"that","sound":"th"}]}, ...] (赤い単語がある行だけ。最大 200 行)
+-- p_advice: Gemini のアドバイス (2000 文字まで残す)
 drop function if exists public.complete_karaoke_session(text, text, text, integer, jsonb, text, timestamptz);
+drop function if exists public.complete_karaoke_session(text, text, text, integer, jsonb, text, timestamptz, text);
 create function public.complete_karaoke_session(p_title text, p_artist text, p_video_id text, p_score integer,
                                                 p_items jsonb, p_timezone text default 'Asia/Tokyo',
-                                                p_taken_at timestamptz default null)
+                                                p_taken_at timestamptz default null, p_advice text default '')
 returns table (streak integer, already_done boolean)
 language plpgsql
 security definer
@@ -80,9 +87,9 @@ begin
     and coalesce(e.item ->> 'line', '') ~ '^[0-9]{1,4}$'
     and jsonb_array_length(w.list) > 0;
 
-  insert into public.karaoke_results (user_id, taken_at, title, artist, video_id, score, items)
+  insert into public.karaoke_results (user_id, taken_at, title, artist, video_id, score, items, advice)
   values (v_uid, v_at, btrim(p_title), left(btrim(coalesce(p_artist, '')), 200), left(coalesce(p_video_id, ''), 20),
-          p_score, v_items);
+          p_score, v_items, left(btrim(coalesce(p_advice, '')), 2000));
 
   v_date := public._practice_date(v_at, coalesce(p_timezone, 'Asia/Tokyo'));
   perform set_config('app.streak_source', 'karaoke', true);
@@ -112,5 +119,5 @@ begin
   return query select s.current_streak, v_done from public.streaks s where s.user_id = v_uid;
 end;
 $$;
-revoke all on function public.complete_karaoke_session(text, text, text, integer, jsonb, text, timestamptz) from public, anon;
-grant execute on function public.complete_karaoke_session(text, text, text, integer, jsonb, text, timestamptz) to authenticated;
+revoke all on function public.complete_karaoke_session(text, text, text, integer, jsonb, text, timestamptz, text) from public, anon;
+grant execute on function public.complete_karaoke_session(text, text, text, integer, jsonb, text, timestamptz, text) to authenticated;

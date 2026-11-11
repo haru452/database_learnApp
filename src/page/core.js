@@ -15,6 +15,25 @@ export function el(tag, className, text) {
   return node;
 }
 
+// YouTube の動画へのリンク (新しいタブで開く)。id が無ければ題名だけ
+export function videoLink(videoId, title, fallback) {
+  const text = title || fallback || "";
+  if (!videoId || !/^[A-Za-z0-9_-]{6,20}$/.test(videoId)) return el("span", "text", text);
+  const a = el("a", "text video-link", text || videoId);
+  a.href = `https://www.youtube.com/watch?v=${videoId}`;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  return a;
+}
+
+// Gemini のアドバイス (改行はそのまま。空なら null)
+export function adviceBlock(advice) {
+  if (!advice || !advice.trim()) return null;
+  const box = el("div", "advice");
+  box.append(el("div", "advice-label", tr("Gemini のアドバイス", "Gemini’s advice")), el("div", "advice-text", advice.trim()));
+  return box;
+}
+
 // ---------- 言語 (日本語 / English)。選んだ言語はこのブラウザに覚えておく ----------
 export let lang = "ja";
 try { if (localStorage.getItem("lang") === "en") lang = "en"; } catch { /* 保存できない環境では日本語 */ }

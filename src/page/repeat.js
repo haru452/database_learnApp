@@ -1,4 +1,4 @@
-import { $, el, fe, say, tr } from "./core.js";
+import { $, adviceBlock, el, fe, say, tr, videoLink } from "./core.js";
 import { api } from "./supabase.js";
 import { renderSummaryChart } from "./summary.js";
 
@@ -77,9 +77,13 @@ export function renderRepeat(results) {   // results: 新しい順
     const card = el("div", "entry");
     for (const r of rs) {
       const row = el("div", "rep-row");
-      row.append(el("span", "acc" + (r.accuracy < WEAK_LIMIT ? " low" : ""), `${r.accuracy}%`), el("span", "text", r.mode === "shadow" ? tr("シャドーイング", "Shadowing") : r.sentence));
-      if (r.mode === "shadow") row.append(el("span", "mode", tr("シャドー", "Shadow")));
+      const shadow = r.mode === "shadow";
+      row.append(el("span", "acc" + (r.accuracy < WEAK_LIMIT ? " low" : ""), `${r.accuracy}%`),
+                 shadow ? videoLink(r.video_id, r.video_title, tr("シャドーイング", "Shadowing")) : el("span", "text", r.sentence));
+      if (shadow) row.append(el("span", "mode", tr("シャドー", "Shadow")));
       card.append(row);
+      const advice = shadow ? adviceBlock(r.advice) : null;   // シャドーイングは Gemini のアドバイスも見せる
+      if (advice) card.append(advice);
     }
     list.append(card);
   }
