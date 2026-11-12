@@ -231,7 +231,8 @@ export function createStreakApi(supabase) {
     /**
      * リピーティングの結果 (1 文 = 1 件、新しい順)。
      * @returns {Array<{ id: number, date: string, createdAt: string, sentence: string, heard: string,
-     *                   accuracy: number, replays: number, source: string, voice: string }>}
+     *                   accuracy: number, replays: number, source: string, voice: string, mode: string,
+     *                   video_id: string, video_title: string, advice: string }>}
      */
     async getRepeatResults(limit = 200) {
       const { data, error } = await supabase.rpc("get_my_repeat_results", { p_limit: limit });
@@ -247,6 +248,10 @@ export function createStreakApi(supabase) {
         source: r.source,
         voice: r.voice,
         mode: r.mode === "shadow" ? "shadow" : "repeat",
+        // シャドーイングの動画とアドバイス (repeat.sql を流す前のサーバーでは無いので空)
+        video_id: r.video_id || "",
+        video_title: r.video_title || "",
+        advice: r.advice || "",
       }));
     },
 
