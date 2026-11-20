@@ -7,12 +7,12 @@
 -- 「やった日」の種類 (schema.sql・topic.sql・repeat.sql・answer.sql と同じ 7 種類)
 alter table public.activity_days drop constraint if exists activity_days_kind_check;
 alter table public.activity_days add constraint activity_days_kind_check
-  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer', 'karaoke', 'talk'));
+  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer', 'karaoke', 'talk', 'chat'));
 
--- やった日カレンダー (schema.sql と同じ定義。vocab.sql だけ後から実行しても単語帳の列が出るように)
+-- やった日カレンダー (schema.sql・chat.sql と同じ定義。vocab.sql だけ後から実行しても単語帳の列が出るように)
 drop function if exists public.get_my_activity_days(date, date);
 create function public.get_my_activity_days(p_from date, p_to date)
-returns table (day date, diary boolean, summary boolean, topic boolean, repeat boolean, vocab boolean)
+returns table (day date, diary boolean, summary boolean, topic boolean, repeat boolean, vocab boolean, chat boolean)
 language sql
 stable
 security invoker
@@ -23,7 +23,8 @@ as $$
          bool_or(a.kind = 'summary') as summary,
          bool_or(a.kind = 'topic')   as topic,
          bool_or(a.kind = 'repeat')  as repeat,
-         bool_or(a.kind = 'vocab')   as vocab
+         bool_or(a.kind = 'vocab')   as vocab,
+         bool_or(a.kind = 'chat')    as chat
   from public.activity_days a
   where a.user_id = (select auth.uid())
     and a.day between p_from and least(p_to, p_from + 400)

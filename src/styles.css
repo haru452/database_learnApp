@@ -162,6 +162,7 @@ h3 { font-size: .9rem; margin: 22px 0 4px; }
 .cal-day.topic   { --flame: #40c057; }
 .cal-day.repeat  { --flame: #f06595; }
 .cal-day.vocab   { --flame: #845ef7; }
+.cal-day.chat    { --flame: #fd7e14; }
 .cal-day.bronze  { --flame: #c27c3e; }
 .cal-day.silver  { --flame: #a3acb9; }
 .cal-day.gold    { --flame: #fcc419; }

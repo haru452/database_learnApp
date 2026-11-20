@@ -46,7 +46,7 @@ create table if not exists public.mistakes (
   user_id     uuid not null references auth.users (id) on delete cascade,
   entry_date  date not null,
   created_at  timestamptz not null default now(),
-  source      text not null check (source in ('diary', 'summary', 'topic')),
+  source      text not null check (source in ('diary', 'summary', 'topic', 'chat')),
   type        text not null check (type in ('article', 'tense', 'preposition', 'agreement', 'plural',
                                             'verb_form', 'word_order', 'word_choice', 'missing_word', 'other')),
   wrong       text not null check (char_length(wrong) between 1 and 300),
@@ -58,7 +58,7 @@ create index if not exists mistakes_user_date_idx on public.mistakes (user_id, e
 -- repeat も入れておく: repeat.sql の後にこのファイルだけ実行し直しても、repeat の行が制約違反にならないように)
 alter table public.activity_days drop constraint if exists activity_days_kind_check;
 alter table public.activity_days add constraint activity_days_kind_check
-  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer', 'karaoke', 'talk'));
+  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer', 'karaoke', 'talk', 'chat'));
 
 alter table public.topic_results enable row level security;
 alter table public.mistakes enable row level security;

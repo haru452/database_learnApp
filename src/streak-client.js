@@ -156,13 +156,13 @@ export function createStreakApi(supabase) {
     /**
      * 期間内の「やった日」(日付の古い順)。日記をやった日 / 要約練習をやった日。
      * @param {string} from "yyyy-mm-dd"   @param {string} to "yyyy-mm-dd" (約1年分まで)
-     * @returns {Array<{ date: string, diary: boolean, summary: boolean, topic: boolean }>}
+     * @returns {Array<{ date: string, diary: boolean, summary: boolean, topic: boolean, repeat: boolean, vocab: boolean, chat: boolean }>}
      */
     async getActivityDays(from, to) {
       const { data, error } = await supabase.rpc("get_my_activity_days", { p_from: from, p_to: to });
       if (error) throw error;
       return (data || []).map((r) => ({
-        date: r.day, diary: !!r.diary, summary: !!r.summary, topic: !!r.topic, repeat: !!r.repeat, vocab: !!r.vocab,
+        date: r.day, diary: !!r.diary, summary: !!r.summary, topic: !!r.topic, repeat: !!r.repeat, vocab: !!r.vocab, chat: !!r.chat,
       }));
     },
 
