@@ -52,7 +52,10 @@ select pg_temp.check((select count(*) from public.activity_days where kind = 'ka
 
 -- 3) 今日 → +1。同じ日にもう一度 → 変わらない (でも保存はする)。赤い単語が無い曲も残す
 select pg_temp.check((select streak from public.complete_karaoke_session('Song 2', '', '', 100, '[]'::jsonb)) = 2, 'next day -> 2');
-select pg_temp.check((select already_done from public.complete_karaoke_session('Song 3', 'C', 'v3', 50, '[]'::jsonb)) = true, 'same day -> already done');
+select pg_temp.check((select already_done from public.complete_karaoke_session('Song 3', 'C', 'v3', 50, '[]'::jsonb, 'Asia/Tokyo', null,
+                       'Open your mouth more on "that".')) = true, 'same day -> already done');
+select pg_temp.check((select advice from public.karaoke_results where title = 'Song 3') = 'Open your mouth more on "that".', 'advice stored');
+select pg_temp.check((select advice from public.karaoke_results where title = 'Song 2') = '', 'no advice -> empty');
 select pg_temp.check((select count(*) from public.karaoke_results) = 3, 'all songs saved');
 
 -- 4) ほかの練習も同じ日に書ける (種類の決まりが 7 種類のまま)

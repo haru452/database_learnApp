@@ -1,4 +1,4 @@
-import { $, el, fe, lang, say, tr } from "./core.js";
+import { $, adviceBlock, el, fe, lang, say, tr, videoLink } from "./core.js";
 import { api, supabase } from "./supabase.js";
 import { createPracticeLogs } from "../practice-logs.js";
 import { groupWeakSounds } from "../weak-sounds.js";
@@ -15,8 +15,8 @@ export const MISTAKE_LABELS_EN = {
   missing_word: "Missing words", other: "Other",
 };
 export const mistakeLabel = (t) => (lang === "en" ? MISTAKE_LABELS_EN : MISTAKE_LABELS)[t] || t;
-export const sourceLabel = (k) => (lang === "en" ? { diary: "diary", summary: "summary", topic: "topic" }
-  : { diary: "日記", summary: "要約", topic: "お題" })[k] || k;
+export const sourceLabel = (k) => (lang === "en" ? { diary: "diary", summary: "summary", topic: "topic", chat: "Claude" }
+  : { diary: "日記", summary: "要約", topic: "お題", chat: "Claude" })[k] || k;
 export let misDays = 30;
 
 export function renderMistakes(stats) {
@@ -135,7 +135,7 @@ export async function loadWeakSounds() {
 }
 
 export const practiceLogs = createPracticeLogs({
-  supabase, $, el, tr, say, fe, soundName: (code) => soundLabel({ sound: code, label: "" }),
+  supabase, $, el, tr, say, fe, videoLink, adviceBlock, soundName: (code) => soundLabel({ sound: code, label: "" }),
 });
 
 export async function loadMistakes() {

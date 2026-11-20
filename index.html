@@ -84,6 +84,8 @@
         <button class="menu-item" type="button" data-page="summary" data-en="Summary scores">要約練習のスコア</button>
         <button class="menu-item" type="button" data-page="topic" data-en="Topic speaking">お題スピーキング</button>
         <button class="menu-item" type="button" data-page="repeat" data-en="Repeating">リピーティング</button>
+        <button class="menu-item" type="button" data-page="answer" data-en="Short answers">短い答え</button>
+        <button class="menu-item" type="button" data-page="karaoke" data-en="Karaoke">カラオケ</button>
         <button class="menu-item" type="button" data-page="mistakes" data-en="Common mistakes">よくあるミス</button>
         <div class="menu-sep"></div>
         <button id="logout" class="menu-item logout" type="button" data-en="Log out">ログアウト</button>
@@ -303,16 +305,20 @@
         <div id="vpron-list"></div>
         <p id="vpron-msg" class="msg" role="status"></p>
       </section>
+      </div>
+
+      <div class="page" data-page="answer" hidden>
       <section id="ans-sec">
-        <h3 data-en="Short answers">短い答え</h3>
         <p class="hint" data-en="Results of the short-answer practice (like the Versant test), newest first.">短い答えの練習 (Versant 式) の結果を、新しい順に出します。</p>
         <div id="ans-filter" class="mis-period" role="group" aria-label="絞り込み" data-en-aria="Filter"></div>
         <div id="ans-list"></div>
         <p id="ans-msg" class="msg" role="status"></p>
       </section>
+      </div>
+
+      <div class="page" data-page="karaoke" hidden>
       <section id="karaoke-sec">
-        <h3 data-en="Karaoke">カラオケ</h3>
-        <p class="hint" data-en="Songs you sang, newest first, with the words that were hard to hear and their sounds.">歌った曲を新しい順に、うまく発音できなかった単語とその音といっしょに出します。</p>
+        <p class="hint" data-en="Songs you sang, newest first: a link to the video, the score, the words that were hard to hear, and Gemini's advice.">歌った曲を新しい順に出します。動画へのリンク・点数・うまく発音できなかった単語・Gemini のアドバイスが見られます。</p>
         <div id="karaoke-list"></div>
         <p id="karaoke-msg" class="msg" role="status"></p>
       </section>

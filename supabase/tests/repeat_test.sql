@@ -123,14 +123,19 @@ select pg_temp.check(exists (select 1 from public.activity_days where kind = 're
 select pg_temp.as_user(:'A');
 set role authenticated;
 select public.save_repeat_results('Asia/Tokyo',
-  '[{"sentence":"Shadow sentence about the weather today.","heard":"shadow sentence","accuracy":50,"source":"bbc","voice":"human","mode":"shadow"},
-    {"sentence":"Plain repeat sentence for the mode test.","accuracy":90,"source":"tatoeba","voice":"human"},
+  '[{"sentence":"Shadow sentence about the weather today.","heard":"shadow sentence","accuracy":50,"source":"bbc","voice":"human","mode":"shadow",
+     "video_id":"abcDEF12345","video_title":"Morning news","advice":"Say the ends of words clearly."},
+    {"sentence":"Plain repeat sentence for the mode test.","accuracy":90,"source":"tatoeba","voice":"human","video_id":"zzz","advice":"no"},
     {"sentence":"Odd mode sentence for the test here.","accuracy":90,"source":"tatoeba","voice":"human","mode":"x"}]'::jsonb, null);
 select pg_temp.check((select count(*) from public.repeat_results where mode = 'shadow') = 1, 'mode shadow saved (even with text)');
 select pg_temp.check((select source from public.repeat_results where mode = 'shadow') = 'bbc', 'source bbc saved');
 select pg_temp.check((select sentence from public.repeat_results where mode = 'shadow') = '', 'shadow: sentence not stored');
 select pg_temp.check((select heard from public.repeat_results where mode = 'shadow') = '', 'shadow: heard not stored');
 select pg_temp.check((select accuracy from public.repeat_results where mode = 'shadow') = 50, 'shadow: score stored');
+select pg_temp.check((select video_id || '|' || video_title || '|' || advice from public.get_my_repeat_results(1000) where mode = 'shadow')
+                     = 'abcDEF12345|Morning news|Say the ends of words clearly.', 'shadow: video and advice stored and returned');
+select pg_temp.check((select video_id || advice from public.repeat_results where sentence like 'Plain repeat%') = '',
+                     'repeat: video and advice not stored');
 select pg_temp.check(not exists (select 1 from public.repeat_results where sentence like 'Shadow sentence%'), 'BBC text nowhere in the table');
 select pg_temp.check((select mode from public.repeat_results where sentence like 'Plain repeat%') = 'repeat', 'mode defaults to repeat');
 select pg_temp.check((select mode from public.repeat_results where sentence like 'Odd mode%') = 'repeat', 'unknown mode -> repeat');
