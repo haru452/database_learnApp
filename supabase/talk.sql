@@ -6,7 +6,7 @@
 -- 「やった日」の種類 (ほかの SQL と同じ 8 種類)
 alter table public.activity_days drop constraint if exists activity_days_kind_check;
 alter table public.activity_days add constraint activity_days_kind_check
-  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer', 'karaoke', 'talk'));
+  check (kind in ('diary', 'summary', 'topic', 'repeat', 'vocab', 'answer', 'karaoke', 'talk', 'chat'));
 
 -- 1 回分を数えて、連続記録を進める (次の日なら +1、空いていれば 1、同じ日・過去の日なら変えない)
 drop function if exists public.complete_talk_session(text, timestamptz);
