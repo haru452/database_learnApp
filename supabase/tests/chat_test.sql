@@ -62,6 +62,8 @@ select pg_temp.check((select streak from public.save_chat_day('d2.json', pg_temp
 select pg_temp.check((select streak from public.get_my_streak('Asia/Tokyo')) = 4, 'shown streak 4');
 select pg_temp.check((select best_streak from public.get_my_streak('Asia/Tokyo')) = 4, 'best 4');
 select pg_temp.check((select count(*) from public.activity_days where kind = 'chat') = 3, '3 chat days');
+select pg_temp.check((select chat and not diary from public.get_my_activity_days(pg_temp.today() - 2, pg_temp.today() - 2)), 'calendar chat column');
+select pg_temp.check((select not chat from public.get_my_activity_days(pg_temp.today(), pg_temp.today())), 'talk day is not chat');
 
 -- 6) 今日のファイル → 同じ日なので 4 のまま。明日 (3 時前の夜更かし分) も受け付ける
 select pg_temp.check((select streak from public.save_chat_day('d0.json', pg_temp.today())) = 4, 'same day -> 4');
@@ -128,5 +130,9 @@ reset role;
 \i ../chat.sql
 select pg_temp.check((select count(*) from public.activity_days where kind = 'chat') >= 4, 'rerun keeps chat rows');
 select pg_temp.check((select count(*) from public.mistakes where source = 'chat') >= 3, 'rerun keeps chat mistakes');
+set role authenticated;
+select pg_temp.as_user(:'A');
+select pg_temp.check((select bool_or(chat) from public.get_my_activity_days(pg_temp.today() - 10, pg_temp.today() + 1)), 'rerun keeps chat column');
+reset role;
 
 \echo ALL CHAT TESTS PASSED

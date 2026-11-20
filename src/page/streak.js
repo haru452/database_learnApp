@@ -50,7 +50,7 @@ export async function loadStreak() {
   loadMistakes();
 }
 
-// ---------- やった日カレンダー (日記 = 赤 / 要約 = 青 / お題 = 緑 / リピーティング = ピンク / 単語帳 = 紫 / 2種類 = 銅 / 3〜4種類 = 銀 / 5つ全部 = 金) ----------
+// ---------- やった日カレンダー (日記 = 赤 / 要約 = 青 / お題 = 緑 / リピーティング = ピンク / 単語帳 = 紫 / Claude と会話 = オレンジ / 2種類 = 銅 / 3〜4種類 = 銀 / 5種類以上 = 金) ----------
 export const FLAME_SVG =
   '<svg class="flame" viewBox="0 0 40 46" aria-hidden="true"><path d="M20 0c1.2 3.6 3 6 4.6 8.4C25.8 6.6 27.6 5 29.2 4c4.6 5.6 7.8 12.6 7.8 21.5C37 36.6 29.4 45 20 45S3 36.6 3 25.5C3 16.6 6.2 9.6 10.8 4c1.6 1 3.4 2.6 4.6 4.4C17 6 18.8 3.6 20 0z"/></svg>';
 export let calMonth = null;   // 表示中の月の1日
@@ -108,12 +108,13 @@ export function renderCalendar(start, today, byDate) {
 
     let label = lang === "en" ? d.toLocaleDateString("en-US", { month: "long", day: "numeric" }) : `${d.getMonth() + 1}月${d.getDate()}日`;
     const kinds = a ? [a.diary && tr("日記", "diary"), a.summary && tr("要約練習", "summary"), a.topic && tr("お題", "topic"),
-                       a.repeat && tr("リピーティング", "repeating"), a.vocab && tr("単語帳", "vocabulary")]
+                       a.repeat && tr("リピーティング", "repeating"), a.vocab && tr("単語帳", "vocabulary"),
+                       a.chat && tr("Claude と会話", "Claude chat")]
       .filter(Boolean) : [];
     if (kinds.length > 0) {
-      // 1種類 = その色 / 2種類 = 銅 / 3〜4種類 = 銀 / 5つ全部 = 金
+      // 1種類 = その色 / 2種類 = 銅 / 3〜4種類 = 銀 / 5種類以上 = 金
       const kind = kinds.length >= 5 ? "gold" : kinds.length >= 3 ? "silver" : kinds.length === 2 ? "bronze"
-        : a.diary ? "diary" : a.summary ? "summary" : a.topic ? "topic" : a.repeat ? "repeat" : "vocab";
+        : a.diary ? "diary" : a.summary ? "summary" : a.topic ? "topic" : a.repeat ? "repeat" : a.vocab ? "vocab" : "chat";
       cell.classList.add("on", kind);
       // 同じ週の中で、前後の日もやっていれば帯でつなぐ
       const prev = byDate.get(isoDate(addDays(d, -1)));
@@ -134,9 +135,9 @@ export function renderCalendar(start, today, byDate) {
 export const KIND_INFO = [
   ["diary", "#e03131", "日記", "Diary"], ["summary", "#4dabf7", "要約練習", "Summary"],
   ["topic", "#40c057", "お題", "Topic"], ["repeat", "#f06595", "リピーティング", "Repeating"],
-  ["vocab", "#845ef7", "単語帳", "Vocabulary"],
+  ["vocab", "#845ef7", "単語帳", "Vocabulary"], ["chat", "#fd7e14", "Claude と会話", "Claude chat"],
 ];
-export const FLAME_COLORS = { 5: "#fcc419", 4: "#a3acb9", 3: "#a3acb9", 2: "#c27c3e" };
+export const FLAME_COLORS = { 6: "#fcc419", 5: "#fcc419", 4: "#a3acb9", 3: "#a3acb9", 2: "#c27c3e" };
 export function renderMonthDays(byDate) {
   const box = $("cal-days");
   box.replaceChildren();

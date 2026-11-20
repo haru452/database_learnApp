@@ -5,7 +5,7 @@
 --   ・日付はファイルの日付 (p_date) を使う。未来の日と、90 日より前の日は受け付けない。
 --   ・同じファイル (p_file_key) を 2 回送っても、2 回目は何もしない (chat_uploads で覚えている)。
 --   ・過去の日を足して連続がつながったら、連続記録を伸ばす (減らす方向には変えない)。
--- ミスは「よくあるミス」に source = 'chat' で入る。やった日は kind = 'chat' (Talk と同じく、連続記録だけに数える)。
+-- ミスは「よくあるミス」に source = 'chat' で入る。やった日は kind = 'chat' (カレンダーではオレンジ。連続記録にも数える)。
 -- 何度流しても同じ状態になる。schema.sql 〜 talk.sql の後に流す。
 
 -- 「やった日」の種類 (ほかの SQL と同じ 9 種類)
@@ -125,3 +125,28 @@ $$;
 
 revoke all on function public.save_chat_day(text, date, jsonb, text) from public, anon;
 grant execute on function public.save_chat_day(text, date, jsonb, text) to authenticated;
+
+-- やった日カレンダー (schema.sql・vocab.sql と同じ定義。chat の列を足した)
+drop function if exists public.get_my_activity_days(date, date);
+create function public.get_my_activity_days(p_from date, p_to date)
+returns table (day date, diary boolean, summary boolean, topic boolean, repeat boolean, vocab boolean, chat boolean)
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select a.day,
+         bool_or(a.kind = 'diary')   as diary,
+         bool_or(a.kind = 'summary') as summary,
+         bool_or(a.kind = 'topic')   as topic,
+         bool_or(a.kind = 'repeat')  as repeat,
+         bool_or(a.kind = 'vocab')   as vocab,
+         bool_or(a.kind = 'chat')    as chat
+  from public.activity_days a
+  where a.user_id = (select auth.uid())
+    and a.day between p_from and least(p_to, p_from + 400)
+  group by a.day
+  order by a.day;
+$$;
+revoke all on function public.get_my_activity_days(date, date) from public, anon;
+grant execute on function public.get_my_activity_days(date, date) to authenticated;

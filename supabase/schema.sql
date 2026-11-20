@@ -418,10 +418,10 @@ $$;
 -- ============================================================
 drop function if exists public.get_my_activity_days(date, date);
 
--- 期間内のやった日 (1日1行。日記 / 要約練習 / お題スピーキング / リピーティング / 単語帳をやったか)。一度に読むのは約1年分まで
+-- 期間内のやった日 (1日1行。日記 / 要約練習 / お題スピーキング / リピーティング / 単語帳 / Claude との会話をやったか)。一度に読むのは約1年分まで
 -- (vocab.sql にも同じ定義がある。どちらを後から実行しても同じ)
 create function public.get_my_activity_days(p_from date, p_to date)
-returns table (day date, diary boolean, summary boolean, topic boolean, repeat boolean, vocab boolean)
+returns table (day date, diary boolean, summary boolean, topic boolean, repeat boolean, vocab boolean, chat boolean)
 language sql
 stable
 security invoker
@@ -432,7 +432,8 @@ as $$
          bool_or(a.kind = 'summary') as summary,
          bool_or(a.kind = 'topic')   as topic,
          bool_or(a.kind = 'repeat')  as repeat,
-         bool_or(a.kind = 'vocab')   as vocab
+         bool_or(a.kind = 'vocab')   as vocab,
+         bool_or(a.kind = 'chat')    as chat
   from public.activity_days a
   where a.user_id = (select auth.uid())
     and a.day between p_from and least(p_to, p_from + 400)

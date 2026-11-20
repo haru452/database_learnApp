@@ -42,7 +42,7 @@ def day(n):
 
 
 ACTIVITY = [
-    {"day": day(0), "diary": True, "summary": True, "topic": True, "repeat": True, "vocab": True},       # 金 (5つ全部)
+    {"day": day(0), "diary": True, "summary": True, "topic": True, "repeat": True, "vocab": True},       # 金 (5種類以上)
     {"day": day(-1), "diary": True, "summary": False, "topic": True, "repeat": False, "vocab": False},  # 銅 (2種類)
     {"day": day(-2), "diary": False, "summary": False, "topic": True, "repeat": False, "vocab": False}, # 緑 (お題だけ)
     {"day": day(-3), "diary": True, "summary": False, "topic": False, "repeat": False, "vocab": False}, # 赤 (日記だけ)
@@ -50,6 +50,7 @@ ACTIVITY = [
     {"day": day(-5), "diary": False, "summary": False, "topic": False, "repeat": True, "vocab": False}, # ピンク (リピーティングだけ)
     {"day": day(-6), "diary": True, "summary": True, "topic": True, "repeat": True, "vocab": False},    # 銀 (4種類)
     {"day": day(-7), "diary": False, "summary": False, "topic": False, "repeat": False, "vocab": True}, # 紫 (単語帳だけ)
+    {"day": day(-8), "diary": False, "summary": False, "topic": False, "repeat": False, "vocab": False, "chat": True},  # オレンジ (Claude と会話だけ)
 ]
 
 XSS = '<img src=x onerror="window.__xss=1">'
@@ -213,11 +214,16 @@ async def run(browser, scheme):
     vocab_dot = await page.evaluate("[...document.querySelectorAll('.cal-legend span')].find(s => s.textContent === '単語帳')?.style.getPropertyValue('--c')")
     check(vocab_dot == "#845ef7", f"{scheme}: vocabulary legend dot is purple ({vocab_dot})")
     legend = await page.inner_text(".cal-legend")
-    check(all(w in legend for w in ("お題", "リピーティング", "単語帳", "2種類", "3〜4種類", "5つ全部")), f"{scheme}: legend {legend}")
+    check(all(w in legend for w in ("お題", "リピーティング", "単語帳", "Claude と会話", "2種類", "3〜4種類", "5種類以上")), f"{scheme}: legend {legend}")
     gold_label = await page.locator(".cal-day.gold").get_attribute("aria-label")
     check("単語帳" in gold_label, f"{scheme}: gold day lists vocabulary ({gold_label})")
     month_days = await page.evaluate("document.getElementById('cal-days').textContent")
     check("単語帳" in month_days, f"{scheme}: what-you-did list has vocabulary")
+    check(await page.locator(".cal-day.chat").count() == 1, f"{scheme}: one Claude-chat-only (orange) day")
+    chat_color = await page.evaluate("getComputedStyle(document.querySelector('.cal-day.chat')).getPropertyValue('--flame').trim()")
+    check(chat_color == "#fd7e14", f"{scheme}: Claude chat flame is orange ({chat_color})")
+    chat_label = await page.locator(".cal-day.chat").get_attribute("aria-label")
+    check("Claude と会話" in chat_label, f"{scheme}: chat day label ({chat_label})")
     await page.screenshot(path=f"/tmp/web_home_{scheme}.png")
 
     # メニュー

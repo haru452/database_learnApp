@@ -8,7 +8,7 @@
 - 要約練習（Versant 対策）の採点結果の保存と、Web での点数の推移・項目ごとの内訳（内容 50 / 構成 25 / 文法・語彙 25）のグラフ
 - お題スピーキングの採点結果の保存と、Web での点数の推移・内訳（内容 40 / 構成 30 / 文法・語彙 30）
 - 添削で見つかったミスの種類ごとの集計（Web の「よくあるミス」。アプリの「今日の注意」と採点の重点チェックにも使う）
-- やった日カレンダー（日記 = 赤 / 要約 = 青 / お題 = 緑 / リピーティング = ピンク / 単語帳 = 紫 / 2種類 = 銅 / 3〜4種類 = 銀 / 5つ全部 = 金）
+- やった日カレンダー（日記 = 赤 / 要約 = 青 / お題 = 緑 / リピーティング = ピンク / 単語帳 = 紫 / Claude と会話 = オレンジ / 2種類 = 銅 / 3〜4種類 = 銀 / 5種類以上 = 金）
 
 ストリークはアプリで日記を添削したときに記録され、Web 版ではアプリと同じ記録と日記の履歴を見られます。
 
@@ -30,7 +30,7 @@
 | `supabase/karaoke.sql` | カラオケ（洋楽を歌って、うまく発音できなかった単語を見る）の結果の表と、その日を連続記録に数える関数（追加分。「ミス」のページの「カラオケ」） |
 | `supabase/talk.sql` | Talk（3D キャラクターの Lufka と英会話の練習）を 1 回した日を連続記録に数える関数（追加分。会話の中身は保存しない） |
 | `supabase/chat.sql` | Claude（claude.ai）との英語の会話で直してもらったミスを保存し、その日を連続記録に数える関数（追加分。「よくあるミス」に「Claude」として出る） |
-| `tools/chat-sync/` | Google ドライブに置かれた Claude の添削（`YYYY-MM-DD_chat.json`）を読んで、`chat.sql` の関数で送る Windows のスクリプト |
+| `tools/chat-sync/` | Google ドライブに置かれた Claude の添削（`YYYY-MM-DD_chat.json`）を読んで、`chat.sql` の関数で送るスクリプト（Google Apps Script 版と Windows 版） |
 | `supabase/tests/` | SQL のテスト（手元の PostgreSQL で `psql -f topic_test.sql`） |
 | `tests/web_test.py` | Web 版のテスト（Playwright。Supabase はダミーに差し替える） |
 | `src/streak-client.js` | ログイン・ストリーク・日記を呼ぶモジュール（どのフレームワークでも使える） |
@@ -206,23 +206,35 @@ Import の画面の **Environment Variables**（またはあとから **Settings
 ---
 
 
-## 6. Claude との会話の添削を送る（Windows）
+## 6. Claude との会話の添削を送る
 
-Claude（claude.ai のプロジェクト「英語学習」）は、英語の会話で直したミスを Google ドライブの `claude-english-mistakes` フォルダに `YYYY-MM-DD_chat.json` として置く。`tools/chat-sync/chat-sync.ps1` がそれを読み、`save_chat_day`（`supabase/chat.sql`）で送る。送った日は連続記録にも数える。
+Claude（claude.ai のプロジェクト「英語学習」）は、英語の会話で直したミスを Google ドライブの `claude-english-mistakes` フォルダに `YYYY-MM-DD_chat.json` として置く。それを読んで `save_chat_day`（`supabase/chat.sql`）で送る。送った日は連続記録にも数える。
 
-1. Supabase の SQL Editor で `supabase/chat.sql` を流す（ほかの .sql の `kind` もそろえたので、流し直しておくと安全）。
-2. パソコンに [Google Drive for desktop](https://www.google.com/drive/download/) を入れ、`claude-english-mistakes` フォルダが `G:\マイドライブ\` などに見えることを確かめる。
-3. PowerShell で、このフォルダから次を実行する（フォルダの場所・メール・パスワードを聞かれる。パスワードは DPAPI で暗号化して `%LOCALAPPDATA%\claude-chat-sync` に保存）。
-   ```
-   powershell -ExecutionPolicy Bypass -File tools\chat-sync\chat-sync.ps1 -Setup
-   powershell -ExecutionPolicy Bypass -File tools\chat-sync\chat-sync.ps1 -DryRun   # 何を送るかだけ見る
-   powershell -ExecutionPolicy Bypass -File tools\chat-sync\chat-sync.ps1          # 送る
-   ```
-4. 自動で動かすには、1 回だけ `powershell -ExecutionPolicy Bypass -File tools\chat-sync\install-task.ps1` を実行する。ログオン時と 3 時間ごとに動き、パソコンが切れていた分は、つけたときにまとめて送る。
+まず Supabase の SQL Editor で `supabase/chat.sql` を流す（ほかの .sql の `kind` もそろえたので、流し直しておくと安全）。
+
+### おすすめ: Google Apps Script（パソコン不要）
+
+Google のサーバーで 3 時間ごとに動くので、パソコンが切れていても送られる。
+
+1. https://script.google.com で「新しいプロジェクト」を作り、`tools/chat-sync/apps-script.gs` の中身を全部貼る。
+2. 「プロジェクトの設定」→「スクリプト プロパティ」に `SUPABASE_URL` `SUPABASE_ANON_KEY`（`config.js` の値）、`EMAIL` `PASSWORD`（Web のログイン）を足す。
+3. 関数 `setup` を選んで「実行」する（初回は Google の許可を求められる）。ログは「実行数」で見られる。止めるときは `removeTriggers` を実行する。
+
+### 代わり: Windows の PowerShell（`tools/chat-sync/chat-sync.ps1`）
+
+```
+powershell -ExecutionPolicy Bypass -File tools\chat-sync\chat-sync.ps1 -Setup
+powershell -ExecutionPolicy Bypass -File tools\chat-sync\chat-sync.ps1 -DryRun
+powershell -ExecutionPolicy Bypass -File tools\chat-sync\install-task.ps1
+```
+Google Drive for desktop が要る。ログオン時と 3 時間ごとに動き、切れていた分はつけたときにまとめて送る。
+
+### どちらも同じ決まり
 
 - 同じファイルを何度送っても二重にはならない（ファイル名と、そのファイルの何件目からかで覚えている）。同じ日のファイルに後から足された分だけ送る。
 - 過去の日を後から送って連続がつながったら、連続記録を伸ばす（減らすことはない）。90 日より前の日は送れない。
-- `note`（日本語の説明）は Web の表に列が無いので送らない。ログ: `%LOCALAPPDATA%\claude-chat-sync\log.txt`
+- `note`（日本語の説明）は Web の表に列が無いので送らない。
+- 両方を同時に動かしても二重にはならないが、どちらか 1 つにする。
 
 ## つまずいたとき
 
